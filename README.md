@@ -23,28 +23,15 @@ Built with **Next.js 15** · targets **InsForge** · deploys on **Vercel**
 ## How it works
 
 ```
-  Coding agent                ForgeGuard                         Operator
-  (Claude Code, Devin, …)
-       │                           │                                │
-       │  POST /api/guard/op       │                                │
-       │  (proposed migration,     │                                │
-       │   function deploy, etc.)  │                                │
-       ├──────────────────────────►│                                │
-       │                           │  Layer 1 — prefilter (regex)   │
-       │                           │  Layer 2 — LLM / heuristic     │
-       │                           │  Write agent_actions row     │
-       │                           │                                │
-       │◄── 200 auto_allowed ────────┤  low risk → log & proceed      │
-       │    or                       │                                │
-       │◄── 202 pending ─────────────┤  high risk → hold ────────────►│
-       │    + safer_alternative      │                                │
-       │                             │         PATCH /api/actions/:id │
-       │                             │◄──── approve / reject / rollback
-       │                             │                                │
-       │                             ▼                                │
-       │                      InsForge backend                        │
-       │                   (apply only after approval)                │
-       └──────────────────────────────────────────────────────────────┘
+  Agent                    ForgeGuard                  InsForge
+    │                          │                          │
+    │   POST /api/guard/op     │                          │
+    └─────────────────────────►│                          │
+                               │  prefilter → classifier  │
+                               │                          │
+              auto_allowed ────┼─────────────────────────►│
+                               │                          │
+              pending ─────────┼──► Operator ── approve ─►│
 ```
 
 Supported operation types: `db.migration` · `function.deploy` · `storage.config` · `auth.config`
