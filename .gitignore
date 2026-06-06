@@ -13,9 +13,6 @@ dist
 .env
 .env*.local
 
-# local backups / scratch (not pushed)
-_bkp/
-
 # misc
 .DS_Store
 .claude/
