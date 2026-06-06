@@ -11,21 +11,9 @@ When a coding agent (Claude Code, Devin, or a Replicas background agent) builds
 or modifies an app on InsForge, ForgeGuard sits in the loop:
 
 - **Audit trail** — every backend action logged with who/what/when/severity.
-- **Guardrails** — 3-layer guard: deterministic filter → LLM risk classifier → human approval.
+- **Guardrails** — deterministic prefilter → LLM risk classifier → human approval.
 - **One-click rollback** — revert applied ops (simulated in this demo; InsForge preview branches next).
-- **Live dashboard** — built on Next.js, deployable on Vercel.
-
-InsForge makes agents 1.7× more accurate. ForgeGuard makes them *safe*.
-
-## Stack
-
-| Layer | Technology |
-|-------|------------|
-| Backend / DB / AI gateway | [InsForge](https://insforge.dev) |
-| Dashboard + guard API | Next.js 15 |
-| Deployment | [Vercel](https://vercel.com) |
-| Background agents (demo) | Replicas, Devin labels in audit log |
-| Mobile approvals (stretch) | [Limrun](https://lim.run) |
+- **Live dashboard** — Next.js app, deployable on Vercel.
 
 ## Architecture
 
@@ -38,16 +26,14 @@ Agent proposes op → POST /api/guard/op
   → Human approve / reject / rollback via dashboard
 ```
 
-See [CHECKLIST_STATUS.md](./CHECKLIST_STATUS.md) for what's implemented vs pending.
-
-## Run locally
+## Quick start
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. Works with **zero env vars** (in-memory store).
+Open [http://localhost:3000](http://localhost:3000). Works with **zero env vars** (in-memory store).
 
 ## Try the guard API
 
@@ -64,19 +50,15 @@ curl -X POST http://localhost:3000/api/guard/op \
 Risky operations return **202** with `requires_approval: true`. Safe operations
 return **200** and `status: "auto_allowed"`.
 
-## Useful scripts
+## Scripts
 
-```bash
-npm run typecheck
-npm run lint
-npm test
-npm run e2e          # requires npm run dev in another terminal
-npm run seed         # seed demo actions into a running app
-npm run precommit    # run before every git push (mirrors CI)
-```
-
-See [COMMIT_CHECKLIST.md](./COMMIT_CHECKLIST.md) for the full hackathon commit
-and submission checklist.
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start the dashboard + API |
+| `npm test` | Run unit tests (18) |
+| `npm run e2e` | End-to-end guard flow (dev server required) |
+| `npm run seed` | Seed demo actions into a running app |
+| `npm run precommit` | typecheck + lint + test + build (mirrors CI) |
 
 ## Environment
 
@@ -95,15 +77,41 @@ Apply `sql/schema.sql` to your InsForge project before switching to
 `FORGEGUARD_STORE=insforge`.
 
 When `FORGEGUARD_OPERATOR_TOKEN` is set, clients must send either
-`Authorization: Bearer <token>` or `x-forgeguard-token: <token>`. The dashboard
-prompts for the token on first protected mutation.
+`Authorization: Bearer <token>` or `x-forgeguard-token: <token>`.
 
-## Agent instructions
+## Agent integration
 
-Coding agents must route backend changes through ForgeGuard — see [CLAUDE.md](./CLAUDE.md).
-InsForge SDK patterns are in [AGENTS.md](./AGENTS.md).
+Coding agents must **not** apply backend changes directly on InsForge. Route every
+proposed operation through the guard chokepoint first:
 
-## Demo script (90 seconds)
+```http
+POST /api/guard/op
+Content-Type: application/json
+
+{
+  "operation_type": "db.migration",
+  "statement": "ALTER TABLE users DROP COLUMN last_login;",
+  "agent": "claude-code",
+  "session_id": "<session-id>",
+  "target": "users",
+  "context": {
+    "table": "users",
+    "row_count": 5,
+    "has_rls": true,
+    "environment": "production"
+  }
+}
+```
+
+Supported `operation_type` values: `db.migration`, `function.deploy`,
+`storage.config`, `auth.config`.
+
+- **200** — `auto_allowed`: low-risk; logged, no human gate.
+- **202** — `pending`: stop and wait for operator approval in the dashboard or via `PATCH /api/actions/<id>`.
+
+If blocked, prefer the `safer_alternative` from the response over the original statement.
+
+## Demo (90 seconds)
 
 1. Run **Drop last_login column** → dashboard shows **HIGH / data_loss**, blocked.
 2. Show **safer alternative**: soft-delete via `deleted_at`.
@@ -112,11 +120,30 @@ InsForge SDK patterns are in [AGENTS.md](./AGENTS.md).
 
 Use dashboard chips or `npm run seed` to populate the audit trail.
 
-## Current limitations
+## Stack
 
-- Backend apply/rollback are **simulated** status transitions (Commit 7).
-- InsForge persistence is coded but needs a live project + env vars (Commit 6).
-- Replicas / Limrun / drift detection are stretch goals.
+| Layer | Technology |
+|-------|------------|
+| Backend / DB / AI gateway | [InsForge](https://insforge.dev) |
+| Dashboard + guard API | Next.js 15 |
+| Deployment | [Vercel](https://vercel.com) |
+
+## Project layout
+
+```
+app/
+  api/guard/op/     Guard chokepoint
+  api/actions/      Audit log + review (approve/reject/rollback)
+  page.tsx          Dashboard
+lib/
+  prefilter.ts      Layer 1 deterministic rules
+  classifier.ts     Layer 2 LLM / heuristic classifier
+  guard.ts          Orchestration
+  store.ts          Memory or InsForge REST persistence
+sql/schema.sql      InsForge Postgres schema
+tests/              Unit tests
+scripts/            seed + e2e helpers
+```
 
 ## Deploy to Vercel
 
@@ -125,9 +152,8 @@ vercel link
 vercel --prod
 ```
 
-Set env vars in the Vercel dashboard (see `.env.example`). Add the production
-URL here once deployed:
+Set env vars in the Vercel dashboard (see `.env.example`).
 
-```
-Live demo: (pending — run vercel --prod)
-```
+## License
+
+MIT — see [LICENSE](./LICENSE).
