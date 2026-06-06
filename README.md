@@ -7,24 +7,47 @@
 
 [![Made with InsForge](https://insforge.dev/badge-made-with-insforge.svg)](https://insforge.dev)
 
-When a coding agent (Claude Code, Devin, or a Replicas background agent) builds
-or modifies an app on InsForge, ForgeGuard sits in the loop:
+ForgeGuard intercepts backend operations proposed by coding agents before they
+touch InsForge. Every op is classified, logged, and either auto-allowed or held
+for human review.
 
-- **Audit trail** — every backend action logged with who/what/when/severity.
-- **Guardrails** — deterministic prefilter → LLM risk classifier → human approval.
-- **One-click rollback** — revert applied ops (simulated in this demo; InsForge preview branches next).
-- **Live dashboard** — Next.js app, deployable on Vercel.
+| Capability | Description |
+|------------|-------------|
+| Audit trail | Who proposed what, when, with severity and rationale |
+| Guardrails | Deterministic prefilter → LLM classifier → operator gate |
+| Dashboard | Live audit log with approve, reject, and rollback |
+| Rollback | One-click revert of applied ops *(simulated in this build)* |
 
-## Architecture
+Built with **Next.js 15** · targets **InsForge** · deploys on **Vercel**
+
+## How it works
 
 ```
-Agent proposes op → POST /api/guard/op
-  → Layer 1: deterministic prefilter (regex rules)
-  → Layer 2: LLM classifier (InsForge Model Gateway, heuristic fallback)
-  → Write agent_actions audit row
-  → pending (blocked) or auto_allowed
-  → Human approve / reject / rollback via dashboard
+  Coding agent                ForgeGuard                         Operator
+  (Claude Code, Devin, …)
+       │                           │                                │
+       │  POST /api/guard/op       │                                │
+       │  (proposed migration,     │                                │
+       │   function deploy, etc.)  │                                │
+       ├──────────────────────────►│                                │
+       │                           │  Layer 1 — prefilter (regex)   │
+       │                           │  Layer 2 — LLM / heuristic     │
+       │                           │  Write agent_actions row     │
+       │                           │                                │
+       │◄── 200 auto_allowed ────────┤  low risk → log & proceed      │
+       │    or                       │                                │
+       │◄── 202 pending ─────────────┤  high risk → hold ────────────►│
+       │    + safer_alternative      │                                │
+       │                             │         PATCH /api/actions/:id │
+       │                             │◄──── approve / reject / rollback
+       │                             │                                │
+       │                             ▼                                │
+       │                      InsForge backend                        │
+       │                   (apply only after approval)                │
+       └──────────────────────────────────────────────────────────────┘
 ```
+
+Supported operation types: `db.migration` · `function.deploy` · `storage.config` · `auth.config`
 
 ## Quick start
 
@@ -33,9 +56,12 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Works with **zero env vars** (in-memory store).
+Open [http://localhost:3000](http://localhost:3000). No environment variables
+required — the default in-memory store and heuristic classifier work out of the box.
 
-## Try the guard API
+## API
+
+**Submit a proposed operation** (agent chokepoint):
 
 ```bash
 curl -X POST http://localhost:3000/api/guard/op \
@@ -43,116 +69,94 @@ curl -X POST http://localhost:3000/api/guard/op \
   -d '{
     "operation_type": "db.migration",
     "statement": "ALTER TABLE users DROP COLUMN last_login;",
+    "agent": "claude-code",
+    "target": "users",
     "context": { "table": "users", "row_count": 5, "environment": "production" }
   }'
 ```
 
-Risky operations return **202** with `requires_approval: true`. Safe operations
-return **200** and `status: "auto_allowed"`.
+| Status | Meaning |
+|--------|---------|
+| **200** | `auto_allowed` — logged, no human gate |
+| **202** | `pending` — blocked until an operator approves |
 
-## Scripts
+When blocked, the response includes `rationale`, `blast_radius`, and a
+`safer_alternative` (e.g. soft-delete via `deleted_at` instead of `DROP COLUMN`).
 
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Start the dashboard + API |
-| `npm test` | Run unit tests (18) |
-| `npm run e2e` | End-to-end guard flow (dev server required) |
-| `npm run seed` | Seed demo actions into a running app |
-| `npm run precommit` | typecheck + lint + test + build (mirrors CI) |
+**Review the audit log:**
 
-## Environment
+```bash
+curl http://localhost:3000/api/actions
+```
 
-Copy `.env.example` to `.env.local` and fill in only what you need.
+**Approve, reject, or rollback:**
+
+```bash
+curl -X PATCH http://localhost:3000/api/actions/<id> \
+  -H 'content-type: application/json' \
+  -d '{ "decision": "approve", "reviewed_by": "operator" }'
+```
+
+`decision` is `approve` · `reject` · `rollback`
+
+## Configuration
+
+Copy `.env.example` to `.env.local`. All variables are optional for local use.
 
 | Variable | Purpose |
 |----------|---------|
 | `FORGEGUARD_STORE` | `memory` (default) or `insforge` |
-| `INSFORGE_URL` / `INSFORGE_KEY` | InsForge project + admin key |
-| `OPENROUTER_API_KEY` | Layer 2 LLM classifier (via OpenRouter) |
-| `INSFORGE_MODEL_GATEWAY_URL` | Override gateway base URL |
-| `FORGEGUARD_OPERATOR_TOKEN` | Protect POST/PATCH mutation routes |
+| `INSFORGE_URL` / `INSFORGE_KEY` | InsForge project credentials |
+| `OPENROUTER_API_KEY` | Layer 2 LLM classifier |
+| `INSFORGE_MODEL_GATEWAY_URL` | Gateway base URL (default: OpenRouter) |
+| `FORGEGUARD_MODEL` | Model id for classifier |
+| `FORGEGUARD_OPERATOR_TOKEN` | Require token on POST/PATCH routes |
 | `FORGEGUARD_BASE_URL` | Target URL for `seed` / `e2e` scripts |
 
-Apply `sql/schema.sql` to your InsForge project before switching to
+Apply `sql/schema.sql` to your InsForge project before setting
 `FORGEGUARD_STORE=insforge`.
 
-When `FORGEGUARD_OPERATOR_TOKEN` is set, clients must send either
-`Authorization: Bearer <token>` or `x-forgeguard-token: <token>`.
+When `FORGEGUARD_OPERATOR_TOKEN` is set, send `Authorization: Bearer <token>`
+or `x-forgeguard-token: <token>` on mutation requests.
 
-## Agent integration
+## For coding agents
 
-Coding agents must **not** apply backend changes directly on InsForge. Route every
-proposed operation through the guard chokepoint first:
+Do **not** apply database migrations, deploy functions, or change storage/auth
+config directly on InsForge. POST every proposed change to `/api/guard/op` first,
+then:
 
-```http
-POST /api/guard/op
-Content-Type: application/json
+1. If `auto_allowed` — proceed with the apply.
+2. If `pending` — stop, surface `rationale` and `safer_alternative` to the
+   operator, and wait for approval via the dashboard or review API.
 
-{
-  "operation_type": "db.migration",
-  "statement": "ALTER TABLE users DROP COLUMN last_login;",
-  "agent": "claude-code",
-  "session_id": "<session-id>",
-  "target": "users",
-  "context": {
-    "table": "users",
-    "row_count": 5,
-    "has_rls": true,
-    "environment": "production"
-  }
-}
+## Development
+
+```bash
+npm test              # unit tests
+npm run e2e           # end-to-end guard flow (dev server required)
+npm run precommit     # typecheck + lint + test + build
 ```
-
-Supported `operation_type` values: `db.migration`, `function.deploy`,
-`storage.config`, `auth.config`.
-
-- **200** — `auto_allowed`: low-risk; logged, no human gate.
-- **202** — `pending`: stop and wait for operator approval in the dashboard or via `PATCH /api/actions/<id>`.
-
-If blocked, prefer the `safer_alternative` from the response over the original statement.
-
-## Demo (90 seconds)
-
-1. Run **Drop last_login column** → dashboard shows **HIGH / data_loss**, blocked.
-2. Show **safer alternative**: soft-delete via `deleted_at`.
-3. Run **Safer alternative** chip → approve → `applied`.
-4. Run a bad op → **Rollback** → `rolled_back`.
-
-Use dashboard chips or `npm run seed` to populate the audit trail.
-
-## Stack
-
-| Layer | Technology |
-|-------|------------|
-| Backend / DB / AI gateway | [InsForge](https://insforge.dev) |
-| Dashboard + guard API | Next.js 15 |
-| Deployment | [Vercel](https://vercel.com) |
 
 ## Project layout
 
 ```
-app/
-  api/guard/op/     Guard chokepoint
-  api/actions/      Audit log + review (approve/reject/rollback)
-  page.tsx          Dashboard
-lib/
-  prefilter.ts      Layer 1 deterministic rules
-  classifier.ts     Layer 2 LLM / heuristic classifier
-  guard.ts          Orchestration
-  store.ts          Memory or InsForge REST persistence
-sql/schema.sql      InsForge Postgres schema
-tests/              Unit tests
-scripts/            seed + e2e helpers
+app/api/guard/op/   Chokepoint — agents POST here
+app/api/actions/    Audit log + review endpoints
+app/page.tsx        Dashboard
+lib/prefilter.ts    Layer 1 rules
+lib/classifier.ts   Layer 2 LLM / heuristic
+lib/guard.ts        Orchestration
+lib/store.ts        Memory or InsForge REST persistence
+sql/schema.sql      Postgres schema for InsForge persistence
 ```
 
-## Deploy to Vercel
+## Deploy
 
 ```bash
-vercel link
-vercel --prod
+vercel link && vercel --prod
 ```
 
-Set env vars in the Vercel dashboard (see `.env.example`).
+Set environment variables in the Vercel dashboard (see `.env.example`).
 
 ## License
 
