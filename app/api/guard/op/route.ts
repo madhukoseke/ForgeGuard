@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOperatorToken } from "@/lib/api-auth";
 import { guardOp } from "@/lib/guard";
+import { getExecutorMode } from "@/lib/insforge-client";
 import { parseProposedOp } from "@/lib/validate-op";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { action, verdict, status } = await guardOp(parsed.op);
+  const { action, verdict, status, applied, apply_error } = await guardOp(parsed.op);
+  const executor = getExecutorMode();
+
+  const autoMessage =
+    executor === "insforge"
+      ? applied
+        ? "Auto-allowed and applied on InsForge."
+        : apply_error
+          ? `Auto-allowed but apply failed: ${apply_error}`
+          : "Auto-allowed."
+      : "Auto-allowed. Executor is simulated (set FORGEGUARD_EXECUTOR=insforge to apply for real).";
 
   return NextResponse.json(
     {
@@ -38,9 +49,13 @@ export async function POST(req: NextRequest) {
       safer_alternative: verdict.safer_alternative,
       blast_radius: verdict.blast_radius,
       source: action.source,
+      applied,
+      branch: action.branch,
+      executor,
+      apply_error,
       message: verdict.requires_approval
         ? "PAUSED — ForgeGuard requires human approval before this op can apply."
-        : "Auto-allowed. In this demo build, backend apply is simulated.",
+        : autoMessage,
     },
     { status: verdict.requires_approval ? 202 : 200 },
   );

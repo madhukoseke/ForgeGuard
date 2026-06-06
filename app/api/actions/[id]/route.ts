@@ -1,11 +1,9 @@
 // Human review actions on a single audit row: approve / reject / rollback.
-//
-// approve  → marks the op applied by the demo simulator, status -> applied
-// reject   → discards the op,                              status -> rejected
-// rollback → marks an applied op rolled back by simulator,  status -> rolled_back
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireOperatorToken } from "@/lib/api-auth";
+import { applyOp, rollbackOp, getExecutorMode, executorIsLive } from "@/lib/insforge-executor";
+import { emitMemoirAppliedEvent } from "@/lib/memoir-events";
 import { getStore } from "@/lib/store";
 import { ActionStatus } from "@/lib/types";
 
@@ -52,7 +50,21 @@ export async function PATCH(
   }
 
   const now = new Date().toISOString();
-  let patch: Partial<{ status: ActionStatus; reviewed_by: string; reviewed_at: string; rollback_ref: string }> = {};
+
+  if (decision === "reject") {
+    if (!["pending", "approved"].includes(row.status)) {
+      return NextResponse.json(
+        { error: `cannot reject from status "${row.status}"` },
+        { status: 409 },
+      );
+    }
+    const updated = await store.update(id, {
+      status: "rejected",
+      reviewed_by: reviewer,
+      reviewed_at: now,
+    });
+    return NextResponse.json({ action: updated });
+  }
 
   if (decision === "approve") {
     if (!["pending", "approved"].includes(row.status)) {
@@ -61,32 +73,60 @@ export async function PATCH(
         { status: 409 },
       );
     }
-    // Demo simulator: record the rollback ref that a real executor would use.
-    patch = {
+
+    const result = await applyOp(row);
+    if (!result.applied && getExecutorMode() !== "simulated") {
+      return NextResponse.json(
+        {
+          error: result.error ?? "Failed to apply operation on InsForge",
+          action: row,
+        },
+        { status: 502 },
+      );
+    }
+
+    const patch: Partial<{
+      status: ActionStatus;
+      reviewed_by: string;
+      reviewed_at: string;
+      rollback_ref: string;
+      branch: string;
+    }> = {
       status: "applied",
       reviewed_by: reviewer,
       reviewed_at: now,
-      rollback_ref: `pre-${row.branch ?? "branch"}`,
+      rollback_ref: result.rollback_ref,
     };
-  } else if (decision === "reject") {
-    if (!["pending", "approved"].includes(row.status)) {
-      return NextResponse.json(
-        { error: `cannot reject from status "${row.status}"` },
-        { status: 409 },
-      );
-    }
-    patch = { status: "rejected", reviewed_by: reviewer, reviewed_at: now };
-  } else {
-    // rollback
-    if (!["applied", "auto_allowed"].includes(row.status)) {
-      return NextResponse.json(
-        { error: `can only roll back applied ops (status is "${row.status}")` },
-        { status: 409 },
-      );
-    }
-    patch = { status: "rolled_back", reviewed_by: reviewer, reviewed_at: now };
+    if (result.branch) patch.branch = result.branch;
+
+    const updated = await store.update(id, patch);
+    if (updated) void emitMemoirAppliedEvent(updated);
+    return NextResponse.json({ action: updated, applied: result.applied });
   }
 
-  const updated = await store.update(id, patch);
-  return NextResponse.json({ action: updated });
+  // rollback
+  if (!["applied", "auto_allowed"].includes(row.status)) {
+    return NextResponse.json(
+      { error: `can only roll back applied ops (status is "${row.status}")` },
+      { status: 409 },
+    );
+  }
+
+  const result = await rollbackOp(row);
+    if (!result.applied && executorIsLive()) {
+    return NextResponse.json(
+      {
+        error: result.error ?? "Failed to roll back operation on InsForge",
+        action: row,
+      },
+      { status: 502 },
+    );
+  }
+
+  const updated = await store.update(id, {
+    status: "rolled_back",
+    reviewed_by: reviewer,
+    reviewed_at: now,
+  });
+  return NextResponse.json({ action: updated, rolled_back: result.applied });
 }

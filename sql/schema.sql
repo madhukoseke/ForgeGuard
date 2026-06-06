@@ -20,9 +20,15 @@ create table if not exists agent_actions (
   reviewed_at       timestamptz,
   safer_alternative text,
   branch            text,                     -- insforge preview branch
-  rollback_ref      text,                     -- migration id / branch to revert to
-  source            text not null default 'deterministic' check (source in ('deterministic', 'llm'))
+  rollback_ref      text,                     -- JSON snapshot or compensating SQL
+  source            text not null default 'deterministic' check (source in ('deterministic', 'llm')),
+  replica_id        text,                     -- Replicas workspace id (webhook enrichment)
+  pr_urls           jsonb,                    -- PR URLs opened by Replicas agent
+  preview_url       text                      -- Limrun signed stream URL for mobile review
 );
+
+create index if not exists agent_actions_session_id_idx on agent_actions (session_id);
+create index if not exists agent_actions_replica_id_idx on agent_actions (replica_id);
 
 create index if not exists agent_actions_created_at_idx on agent_actions (created_at desc);
 create index if not exists agent_actions_status_idx on agent_actions (status);

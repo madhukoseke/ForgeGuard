@@ -56,9 +56,15 @@ async function main() {
     }),
   }));
   assert(res.status === 200, `safe op expected 200, got ${res.status}`);
-  const safe = body as { status: string; requires_approval: boolean };
-  assert(safe.status === "auto_allowed", "safe op should be auto_allowed");
-  console.log("✓ safe op auto_allowed (200)");
+  const safe = body as {
+    id: string;
+    status: string;
+    requires_approval: boolean;
+    applied?: boolean;
+  };
+  assert(safe.status === "applied", "safe op should be applied after auto-apply");
+  assert(safe.applied !== false, "safe op should report applied");
+  console.log("✓ safe op applied (200)");
 
   // Risky op → pending
   ({ res, body } = await req("/api/guard/op", {
@@ -93,8 +99,8 @@ async function main() {
   assert(approved.rollback_ref, "approve should set rollback_ref");
   console.log("✓ approve → applied");
 
-  // Rollback
-  ({ res, body } = await req(`/api/actions/${risky.id}`, {
+  // Rollback (safe op was auto-applied → status applied)
+  ({ res, body } = await req(`/api/actions/${safe.id}`, {
     method: "PATCH",
     body: JSON.stringify({ decision: "rollback", reviewed_by: "e2e" }),
   }));

@@ -78,6 +78,10 @@ export interface AgentAction {
   rollback_ref: string | null;
   // How the verdict was reached: "deterministic" (Layer 1 only) or "llm".
   source: "deterministic" | "llm";
+  // Cross-platform audit enrichment (Replicas webhooks, Limrun mobile preview).
+  replica_id: string | null;
+  pr_urls: string[] | null;
+  preview_url: string | null;
 }
 
 export const SEVERITY_ORDER: Severity[] = [

@@ -35,8 +35,9 @@ test("safe additive migration is auto-allowed", async () => {
     context: { table: "users", row_count: 5 },
   });
 
-  assert.equal(result.status, "auto_allowed");
+  assert.equal(result.status, "applied");
   assert.equal(result.action.requires_approval, false);
+  assert.equal(result.applied, true);
   assert.equal(result.action.source, "deterministic");
 });
 

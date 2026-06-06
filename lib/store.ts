@@ -75,14 +75,41 @@ class InsForgeStore implements ActionStore {
     return `${this.base}/api/database/records/${this.table}${path}`;
   }
 
+  // Omit optional enrichment columns when null so older agent_actions schemas
+  // (pre-replica_id / pr_urls / preview_url) still accept inserts.
+  private serializeRow(row: AgentAction | Partial<AgentAction>) {
+    const out: Record<string, unknown> = { ...row };
+    for (const key of ["replica_id", "pr_urls", "preview_url"] as const) {
+      if (out[key] == null) delete out[key];
+    }
+    return out;
+  }
+
+  private async insforgeError(
+    action: string,
+    resp: Response,
+  ): Promise<never> {
+    const body = await resp.text().catch(() => "");
+    let detail = body;
+    try {
+      const parsed = JSON.parse(body) as { message?: string };
+      if (parsed.message) detail = parsed.message;
+    } catch {
+      /* keep raw body */
+    }
+    throw new Error(
+      `InsForge ${action} failed: ${resp.status}${detail ? ` — ${detail}` : ""}`,
+    );
+  }
+
   async insert(row: AgentAction): Promise<AgentAction> {
     // InsForge requires an array body; Prefer header returns the created row.
     const resp = await fetch(this.url(), {
       method: "POST",
       headers: this.headers({ prefer: "return=representation" }),
-      body: JSON.stringify([row]),
+      body: JSON.stringify([this.serializeRow(row)]),
     });
-    if (!resp.ok) throw new Error(`InsForge insert failed: ${resp.status}`);
+    if (!resp.ok) await this.insforgeError("insert", resp);
     const data = await resp.json().catch(() => [row]);
     return Array.isArray(data) ? (data[0] ?? row) : (data ?? row);
   }
@@ -111,7 +138,7 @@ class InsForgeStore implements ActionStore {
     const resp = await fetch(this.url(`?id=eq.${encodeURIComponent(id)}`), {
       method: "PATCH",
       headers: this.headers({ prefer: "return=representation" }),
-      body: JSON.stringify(patch),
+      body: JSON.stringify(this.serializeRow(patch)),
     });
     if (!resp.ok) return null;
     const rows = (await resp.json()) as AgentAction[];

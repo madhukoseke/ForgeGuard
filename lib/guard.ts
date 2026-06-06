@@ -1,9 +1,12 @@
 // The guard orchestration: merge Layer 1 + Layer 2, write the audit row, and
-// pause for approval when required. Backend apply/rollback are simulated in this
-// demo build until a real InsForge executor is wired in.
+// pause for approval when required. Auto-allowed ops apply via the InsForge
+// executor when FORGEGUARD_EXECUTOR=insforge.
 
 import { randomUUID } from "crypto";
 import { classify, heuristicVerdict } from "./classifier";
+import { applyOp } from "./insforge-executor";
+import { getExecutorMode } from "./insforge-client";
+import { resolvePreviewUrl, shouldAttachPreview } from "./limrun";
 import { prefilter } from "./prefilter";
 import { getStore } from "./store";
 import {
@@ -15,9 +18,6 @@ import {
   computeRequiresApproval,
 } from "./types";
 
-// Merge the deterministic floor (Layer 1) with the LLM's nuance (Layer 2).
-// Layer 1 can only RAISE severity, never lower it — a regex-caught DROP TABLE
-// stays critical even if the model is unsure.
 function mergeVerdicts(op: ProposedOp, llm: Verdict): Verdict {
   const pf = prefilter(op);
   const deterministic = heuristicVerdict(op);
@@ -47,6 +47,8 @@ export interface GuardResult {
   action: AgentAction;
   verdict: Verdict;
   status: AgentAction["status"];
+  applied: boolean;
+  apply_error?: string;
 }
 
 export async function guardOp(op: ProposedOp): Promise<GuardResult> {
@@ -55,11 +57,8 @@ export async function guardOp(op: ProposedOp): Promise<GuardResult> {
 
   const now = new Date().toISOString();
   const requiresApproval = verdict.requires_approval;
-
-  // Auto-allowed ops are marked allowed immediately; risky ops pause.
-  // The branch/rollback refs model the real executor contract.
   const branch = `forgeguard/op-${Date.now().toString(36)}`;
-  const status = requiresApproval ? "pending" : "auto_allowed";
+  let status: AgentAction["status"] = requiresApproval ? "pending" : "auto_allowed";
 
   const action: AgentAction = {
     id: randomUUID(),
@@ -80,13 +79,56 @@ export async function guardOp(op: ProposedOp): Promise<GuardResult> {
     reviewed_at: null,
     safer_alternative: verdict.safer_alternative,
     branch,
-    rollback_ref: requiresApproval ? null : `pre-${branch}`,
+    rollback_ref: null,
     source,
+    replica_id: null,
+    pr_urls: null,
+    preview_url: null,
   };
 
   await getStore().insert(action);
-  return { action, verdict, status };
+
+  if (requiresApproval && shouldAttachPreview(action)) {
+    try {
+      const preview = await resolvePreviewUrl();
+      if (preview) {
+        action.preview_url = preview.previewUrl;
+        await getStore().update(action.id, { preview_url: preview.previewUrl });
+      }
+    } catch {
+      /* preview is best-effort */
+    }
+  }
+
+  let applied = false;
+  let apply_error: string | undefined;
+
+  if (!requiresApproval) {
+    const result = await applyOp(action);
+    if (result.applied) {
+      applied = true;
+      status = "applied";
+      await getStore().update(action.id, {
+        status: "applied",
+        rollback_ref: result.rollback_ref,
+        branch: result.branch ?? action.branch,
+      });
+      action.status = "applied";
+      action.rollback_ref = result.rollback_ref;
+      if (result.branch) action.branch = result.branch;
+    } else if (getExecutorMode() !== "simulated") {
+      status = "pending";
+      apply_error = result.error ?? "Apply failed";
+      await getStore().update(action.id, {
+        status: "pending",
+        rationale: `${action.rationale ?? ""} Apply failed: ${apply_error}`.trim(),
+      });
+      action.status = "pending";
+      action.rationale = `${action.rationale ?? ""} Apply failed: ${apply_error}`.trim();
+    }
+  }
+
+  return { action, verdict, status, applied, apply_error };
 }
 
-// Re-export for callers that only need a synchronous verdict (no persistence).
 export { heuristicVerdict };

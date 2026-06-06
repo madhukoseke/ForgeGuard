@@ -19,6 +19,14 @@ const SEV_LABEL: Record<Severity, string> = {
 
 const OPERATOR_TOKEN_KEY = "forgeguard_operator_token";
 
+interface HealthStatus {
+  store: "memory" | "insforge";
+  executor: "simulated" | "insforge";
+  insforge_configured: boolean;
+  insforge_reachable: boolean;
+  branch_cli: boolean;
+}
+
 async function fetchWithOperatorToken(
   input: RequestInfo | URL,
   init: RequestInit = {},
@@ -58,6 +66,7 @@ export default function Dashboard() {
   const [ops, setOps] = useState<DemoOpMeta[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [health, setHealth] = useState<HealthStatus | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -74,6 +83,10 @@ export default function Dashboard() {
     fetch("/api/demo")
       .then((r) => r.json())
       .then((d) => setOps(d.ops ?? []))
+      .catch(() => {});
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then((d) => setHealth(d as HealthStatus))
       .catch(() => {});
     const t = setInterval(refresh, 2000);
     return () => clearInterval(t);
@@ -154,54 +167,68 @@ export default function Dashboard() {
 
   return (
     <div className="shell">
-      <div className="mapwash" aria-hidden="true" />
+      <div className="gridwash" aria-hidden="true" />
       <header className="topbar">
         <div className="brand">
           <span className="brandmark">FG</span>
           <div>
-            <p className="eyebrow">InsForge stronghold</p>
+            <p className="eyebrow">Control plane</p>
             <h1>ForgeGuard</h1>
           </div>
         </div>
-        <span className="live">
-          <span className="dot" /> Watch active
+        <span
+          className={`live ${health?.insforge_reachable ? "connected" : health?.insforge_configured ? "degraded" : ""}`}
+          title={
+            health?.insforge_reachable
+              ? "InsForge connected — live executor"
+              : health?.insforge_configured
+                ? "InsForge configured but unreachable"
+                : "Offline demo mode (memory store, simulated executor)"
+          }
+        >
+          <span className="dot" />
+          {health?.insforge_reachable
+            ? "InsForge connected"
+            : health?.insforge_configured
+              ? "InsForge unreachable"
+              : "Offline demo"}
         </span>
       </header>
 
       <main>
         <section className="overview">
           <div>
-            <p className="eyebrow">Operator keep</p>
-            <h2>Command the guarded backend frontier.</h2>
+            <p className="eyebrow">Operator dashboard</p>
+            <h2>Review and control agent operations.</h2>
             <p>
-              Review agent operations from a dark war-room ledger built for policy
-              calls, approvals, and rollbacks.
+              Monitor the audit trail, approve high-risk changes, and roll back
+              when needed — all from one place.
             </p>
           </div>
           <div className={`posture ${stats.pending > 0 ? "attention" : ""}`}>
-            <span>Castle watch</span>
+            <span>Status</span>
             <strong>{posture}</strong>
           </div>
         </section>
 
         <section className="stats" aria-label="Audit summary">
-          <div className="stat resource-wood">
+          <div className="stat">
             <span>Actions</span>
             <strong>{stats.total}</strong>
           </div>
-          <div className="stat resource-stone">
+          <div className="stat">
             <span>Guarded</span>
             <strong>{stats.blocked}</strong>
           </div>
-          <div className={stats.pending > 0 ? "stat resource-gold attention" : "stat resource-gold"}>
+          <div className={stats.pending > 0 ? "stat attention" : "stat"}>
             <span>Pending</span>
             <strong>{stats.pending}</strong>
           </div>
-          <div className={stats.critical > 0 ? "stat resource-flame alert" : "stat resource-flame"}>
+          <div className={stats.critical > 0 ? "stat alert" : "stat"}>
             <span>High risk</span>
             <strong>{stats.critical}</strong>
           </div>
-          <div className="stat resource-iron">
+          <div className="stat">
             <span>Rolled back</span>
             <strong>{stats.rolledBack}</strong>
           </div>
@@ -211,8 +238,8 @@ export default function Dashboard() {
           <section className="panel audit-panel">
             <div className="panel-head">
               <div>
-                <p className="eyebrow">Town ledger</p>
-                <h2>Recent orders</h2>
+                <p className="eyebrow">Audit trail</p>
+                <h2>Recent actions</h2>
               </div>
               <span className="panel-meta">{actions.length} events</span>
             </div>
@@ -220,7 +247,7 @@ export default function Dashboard() {
               {actions.length === 0 ? (
                 <div className="empty">
                   <span>No actions yet</span>
-                  <p>Run a simulated operation to populate the trail.</p>
+                  <p>Run a simulated operation to populate the audit trail.</p>
                 </div>
               ) : (
                 actions.map((a) => (
@@ -233,8 +260,8 @@ export default function Dashboard() {
           <aside className="panel demo-panel">
             <div className="panel-head">
               <div>
-                <p className="eyebrow">Command queue</p>
-                <h2>Agent ops</h2>
+                <p className="eyebrow">Simulator</p>
+                <h2>Agent operations</h2>
               </div>
               <span className="panel-meta">{ops.length} presets</span>
             </div>
@@ -317,7 +344,50 @@ function ActionCard({
         <span>
           approval <b>{a.requires_approval ? "required" : "auto"}</b>
         </span>
+        {a.branch && (
+          <span>
+            branch <b>{a.branch}</b>
+          </span>
+        )}
       </div>
+
+      {a.rollback_ref && a.rollback_ref.startsWith("{") && (
+        <div className="meta">
+          <span>
+            rollback <b>snapshot stored</b>
+          </span>
+        </div>
+      )}
+
+      {a.preview_url && (
+        <div className="safer">
+          <b>Mobile preview:</b>{" "}
+          <a href={a.preview_url} target="_blank" rel="noopener noreferrer">
+            Open Limrun stream
+          </a>
+        </div>
+      )}
+
+      {a.pr_urls && a.pr_urls.length > 0 && (
+        <div className="meta">
+          {a.pr_urls.map((url) => (
+            <span key={url}>
+              PR{" "}
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                {url.replace(/^https?:\/\//, "").slice(0, 48)}
+              </a>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {a.replica_id && (
+        <div className="meta">
+          <span>
+            replica <b>{a.replica_id.slice(0, 8)}…</b>
+          </span>
+        </div>
+      )}
 
       {a.safer_alternative && (
         <div className="safer">

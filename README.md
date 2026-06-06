@@ -16,7 +16,7 @@ for human review.
 | Audit trail | Who proposed what, when, with severity and rationale |
 | Guardrails | Deterministic prefilter → LLM classifier → operator gate |
 | Dashboard | Live audit log with approve, reject, and rollback |
-| Rollback | One-click revert of applied ops *(simulated in this build)* |
+| Rollback | One-click revert via compensating migrations or InsForge preview branches |
 
 Built with **Next.js 15** · targets **InsForge** · deploys on **Vercel**
 
@@ -64,7 +64,7 @@ curl -X POST http://localhost:3000/api/guard/op \
 
 | Status | Meaning |
 |--------|---------|
-| **200** | `auto_allowed` — logged, no human gate |
+| **200** | `applied` — auto-allowed and applied on InsForge (or simulated locally) |
 | **202** | `pending` — blocked until an operator approves |
 
 When blocked, the response includes `rationale`, `blast_radius`, and a
@@ -93,15 +93,25 @@ Copy `.env.example` to `.env.local`. All variables are optional for local use.
 | Variable | Purpose |
 |----------|---------|
 | `FORGEGUARD_STORE` | `memory` (default) or `insforge` |
+| `FORGEGUARD_EXECUTOR` | `simulated` (default), `insforge` (raw SQL), or `migrations` (tracked) |
+| `FORGEGUARD_BRANCH_MODE` | Set to `cli` locally for preview-branch rollback (not on Vercel) |
 | `INSFORGE_URL` / `INSFORGE_KEY` | InsForge project credentials |
 | `OPENROUTER_API_KEY` | Layer 2 LLM classifier |
 | `INSFORGE_MODEL_GATEWAY_URL` | Gateway base URL (default: OpenRouter) |
 | `FORGEGUARD_MODEL` | Model id for classifier |
 | `FORGEGUARD_OPERATOR_TOKEN` | Require token on POST/PATCH routes |
 | `FORGEGUARD_BASE_URL` | Target URL for `seed` / `e2e` scripts |
+| `REPLICAS_WEBHOOK_SECRET` | Verify Replicas webhook signatures |
+| `LIM_API_KEY` / `LIMRUN_INSTANCE_ID` | Limrun mobile preview for pending ops |
+| `MEMOIR_WEBHOOK_URL` | Optional outbound events when Memoir API access granted |
 
-Apply `sql/schema.sql` to your InsForge project before setting
-`FORGEGUARD_STORE=insforge`.
+Bootstrap your linked InsForge project (applies `sql/schema.sql` via migration API):
+
+```bash
+npm run bootstrap:insforge
+```
+
+Then set `FORGEGUARD_STORE=insforge` and `FORGEGUARD_EXECUTOR=insforge` in `.env.local`.
 
 When `FORGEGUARD_OPERATOR_TOKEN` is set, send `Authorization: Bearer <token>`
 or `x-forgeguard-token: <token>` on mutation requests.
@@ -112,16 +122,43 @@ Do **not** apply database migrations, deploy functions, or change storage/auth
 config directly on InsForge. POST every proposed change to `/api/guard/op` first,
 then:
 
-1. If `auto_allowed` — proceed with the apply.
+1. If `applied` — the op was auto-allowed and applied (or proceed if you orchestrate apply yourself in simulated mode).
 2. If `pending` — stop, surface `rationale` and `safer_alternative` to the
    operator, and wait for approval via the dashboard or review API.
+
+## Integrations
+
+### InsForge (core)
+
+Set `FORGEGUARD_EXECUTOR=insforge` with credentials to apply migrations, storage,
+auth, and function deploys on approve. Rollback uses compensating SQL snapshots or
+optional CLI branches (`FORGEGUARD_BRANCH_MODE=cli`). Check `GET /api/health`.
+
+### Replicas ([tryreplicas.com](https://tryreplicas.com/))
+
+Background coding agents should POST proposed ops before touching InsForge.
+Full environment setup: [docs/REPLICAS.md](./docs/REPLICAS.md).
+
+Webhook endpoint: `POST /api/webhooks/replicas`
+
+### Limrun ([lim.run](https://lim.run/))
+
+When `LIM_API_KEY` or `LIMRUN_INSTANCE_ID` is set, pending ops at medium+
+severity receive a signed stream URL in the dashboard for mobile operator review.
+
+### Memoir ([trymemoir.ai](https://www.trymemoir.ai/))
+
+No public API — partnership and release artifacts: [docs/MEMOIR.md](./docs/MEMOIR.md),
+[CHANGELOG.md](./CHANGELOG.md).
 
 ## Development
 
 ```bash
-npm test              # unit tests
-npm run e2e           # end-to-end guard flow (dev server required)
-npm run precommit     # typecheck + lint + test + build
+npm test                      # unit tests (simulated executor)
+npm run e2e                   # end-to-end guard flow (dev server required)
+npm run bootstrap:insforge    # apply schema to linked InsForge project
+npm run integration:insforge  # live InsForge connectivity check
+npm run precommit             # typecheck + lint + test + build
 ```
 
 ## Project layout
@@ -132,8 +169,17 @@ app/api/actions/    Audit log + review endpoints
 app/page.tsx        Dashboard
 lib/prefilter.ts    Layer 1 rules
 lib/classifier.ts   Layer 2 LLM / heuristic
-lib/guard.ts        Orchestration
+lib/guard.ts        Orchestration + auto-apply
+lib/executor.ts     InsForge apply/rollback (REST + optional CLI branches)
+lib/insforge-executor.ts  Public executor re-exports
+lib/insforge-client.ts  InsForge Admin REST client
+lib/replicas.ts     Replicas webhook helpers
+lib/limrun.ts       Limrun preview URLs
+lib/memoir-events.ts  Optional Memoir outbound events
 lib/store.ts        Memory or InsForge REST persistence
+app/api/webhooks/replicas/  Replicas event ingestion
+docs/REPLICAS.md    Replicas environment setup
+docs/MEMOIR.md      Memoir partnership guide
 sql/schema.sql      Postgres schema for InsForge persistence
 ```
 
