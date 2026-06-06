@@ -13,19 +13,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-background">
-      <div className="pointer-events-none fixed inset-0 glow-top" aria-hidden="true" />
-      <div className="pointer-events-none fixed inset-0 grid-bg opacity-40" aria-hidden="true" />
-      <div className="relative">
-        <div className="mx-auto flex h-12 max-w-[1200px] items-center justify-end px-6">
-          <Link
-            href="/"
-            className="text-xs text-muted transition-colors hover:text-foreground"
-          >
-            ← Back to home
-          </Link>
-        </div>
-        {children}
-      </div>
+      {children}
     </div>
   );
 }

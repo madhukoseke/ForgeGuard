@@ -1,9 +1,6 @@
 import LandingNav from "@/components/landing/LandingNav";
 import HeroSection from "@/components/landing/HeroSection";
-import FeaturesSection from "@/components/landing/FeaturesSection";
-import HowItWorksSection from "@/components/landing/HowItWorksSection";
-import DemoSection from "@/components/landing/DemoSection";
-import ApiSection from "@/components/landing/ApiSection";
+import ProductSection from "@/components/landing/ProductSection";
 import FaqSection from "@/components/landing/FaqSection";
 import LandingFooter from "@/components/landing/LandingFooter";
 
@@ -13,10 +10,7 @@ export default function LandingPage() {
       <LandingNav />
       <main>
         <HeroSection />
-        <FeaturesSection />
-        <HowItWorksSection />
-        <DemoSection />
-        <ApiSection />
+        <ProductSection />
         <FaqSection />
       </main>
       <LandingFooter />

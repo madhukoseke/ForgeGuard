@@ -29,6 +29,8 @@ Grant Memoir read access to the repo. It will pick up:
 | Artifact | Location |
 |----------|----------|
 | Release notes with `#forgeguard-*` tags | [CHANGELOG.md](../CHANGELOG.md) |
+| Show HN post draft | [docs/SHOW_HN.md](./SHOW_HN.md) |
+| Demo recording script | [docs/DEMO_SCRIPT.md](./DEMO_SCRIPT.md) |
 | Integration architecture | [README.md](../README.md) |
 | Demo operations | `lib/demo-ops.ts` |
 | Audit API | `GET /api/actions` |

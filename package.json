@@ -1,6 +1,6 @@
 {
   "name": "forgeguard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "The reliability & observability control plane for agent-built backends on InsForge.",
   "scripts": {
@@ -11,12 +11,14 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
     "e2e": "tsx scripts/e2e.ts",
+    "fix:npm-cache": "bash scripts/fix-npm-cache.sh",
     "seed": "tsx scripts/seed.ts",
     "bootstrap:insforge": "tsx --env-file=.env.local scripts/bootstrap-insforge.ts",
     "integration:insforge": "tsx --env-file=.env.local scripts/insforge-integration.ts",
     "precommit": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
+    "geist": "^1.7.2",
     "lucide-react": "^1.17.0",
     "next": "15.5.18",
     "react": "18.3.1",

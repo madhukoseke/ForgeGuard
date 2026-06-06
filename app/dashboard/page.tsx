@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AgentAction, Severity } from "@/lib/types";
 
@@ -160,140 +161,95 @@ export default function Dashboard() {
     return { total, blocked, pending, critical, rolledBack };
   }, [actions]);
 
-  const posture =
-    stats.pending > 0
-      ? `${stats.pending} pending ${stats.pending === 1 ? "review" : "reviews"}`
-      : "No pending reviews";
-
   return (
     <div className="shell">
-      <div className="gridwash" aria-hidden="true" />
       <header className="topbar">
-        <div className="brand">
+        <Link href="/" className="brand">
           <span className="brandmark">FG</span>
-          <div>
-            <p className="eyebrow">Control plane</p>
-            <h1>ForgeGuard</h1>
-          </div>
-        </div>
-        <span
-          className={`live ${health?.insforge_reachable ? "connected" : health?.insforge_configured ? "degraded" : ""}`}
-          title={
-            health?.insforge_reachable
-              ? "InsForge connected — live executor"
+          <h1>ForgeGuard</h1>
+        </Link>
+        <div className="topbar-right">
+          <span
+            className={`live ${health?.insforge_reachable ? "connected" : health?.insforge_configured ? "degraded" : ""}`}
+            title={
+              health?.insforge_reachable
+                ? "InsForge connected"
+                : health?.insforge_configured
+                  ? "InsForge unreachable"
+                  : "Offline demo"
+            }
+          >
+            <span className="dot" />
+            {health?.insforge_reachable
+              ? "Connected"
               : health?.insforge_configured
-                ? "InsForge configured but unreachable"
-                : "Offline demo mode (memory store, simulated executor)"
-          }
-        >
-          <span className="dot" />
-          {health?.insforge_reachable
-            ? "InsForge connected"
-            : health?.insforge_configured
-              ? "InsForge unreachable"
-              : "Offline demo"}
-        </span>
+                ? "Unreachable"
+                : "Demo"}
+          </span>
+        </div>
       </header>
 
-      <main>
-        <section className="overview">
-          <div>
-            <p className="eyebrow">Operator dashboard</p>
-            <h2>Review and control agent operations.</h2>
-            <p>
-              Monitor the audit trail, approve high-risk changes, and roll back
-              when needed — all from one place.
-            </p>
-          </div>
-          <div className={`posture ${stats.pending > 0 ? "attention" : ""}`}>
-            <span>Status</span>
-            <strong>{posture}</strong>
+      <p className="statline" aria-label="Summary">
+        <span>
+          <strong>{stats.total}</strong> actions
+        </span>
+        <span>
+          <strong>{stats.blocked}</strong> guarded
+        </span>
+        <span className={stats.pending > 0 ? "warn" : undefined}>
+          <strong>{stats.pending}</strong> pending
+        </span>
+        <span className={stats.critical > 0 ? "alert" : undefined}>
+          <strong>{stats.critical}</strong> high risk
+        </span>
+        <span>
+          <strong>{stats.rolledBack}</strong> rolled back
+        </span>
+      </p>
+
+      <div className="workspace">
+        <section>
+          <h2 className="section-label">Actions</h2>
+          <div className="feed">
+            {actions.length === 0 ? (
+              <div className="empty">
+                <span>No actions yet</span>
+                <p>Run a simulated operation to get started.</p>
+              </div>
+            ) : (
+              actions.map((a) => (
+                <ActionCard key={a.id} a={a} busy={busy} onReview={review} />
+              ))
+            )}
           </div>
         </section>
 
-        <section className="stats" aria-label="Audit summary">
-          <div className="stat">
-            <span>Actions</span>
-            <strong>{stats.total}</strong>
-          </div>
-          <div className="stat">
-            <span>Guarded</span>
-            <strong>{stats.blocked}</strong>
-          </div>
-          <div className={stats.pending > 0 ? "stat attention" : "stat"}>
-            <span>Pending</span>
-            <strong>{stats.pending}</strong>
-          </div>
-          <div className={stats.critical > 0 ? "stat alert" : "stat"}>
-            <span>High risk</span>
-            <strong>{stats.critical}</strong>
-          </div>
-          <div className="stat">
-            <span>Rolled back</span>
-            <strong>{stats.rolledBack}</strong>
-          </div>
-        </section>
-
-        <div className="workspace">
-          <section className="panel audit-panel">
-            <div className="panel-head">
-              <div>
-                <p className="eyebrow">Audit trail</p>
-                <h2>Recent actions</h2>
-              </div>
-              <span className="panel-meta">{actions.length} events</span>
-            </div>
-            <div className="feed">
-              {actions.length === 0 ? (
-                <div className="empty">
-                  <span>No actions yet</span>
-                  <p>Run a simulated operation to populate the audit trail.</p>
-                </div>
-              ) : (
-                actions.map((a) => (
-                  <ActionCard key={a.id} a={a} busy={busy} onReview={review} />
-                ))
-              )}
-            </div>
-          </section>
-
-          <aside className="panel demo-panel">
-            <div className="panel-head">
-              <div>
-                <p className="eyebrow">Simulator</p>
-                <h2>Agent operations</h2>
-              </div>
-              <span className="panel-meta">{ops.length} presets</span>
-            </div>
-            {error && <div className="errorline">{error}</div>}
-            <div className="chips">
-              {ops.map((op) => (
-                <button
-                  key={op.index}
-                  className="chip"
-                  disabled={busy !== null}
-                  onClick={() => runOp(op.index)}
-                  title={op.statement}
-                >
-                  {op.label}
-                </button>
-              ))}
-            </div>
-            <div className="toolbtns">
+        <aside className="sidebar">
+          <h2 className="section-label">Simulate</h2>
+          {error && <div className="errorline">{error}</div>}
+          <div className="chips">
+            {ops.map((op) => (
               <button
-                className="btn ghost"
+                key={op.index}
+                className="chip"
                 disabled={busy !== null}
-                onClick={() => tool("seed_all")}
+                onClick={() => runOp(op.index)}
+                title={op.statement}
               >
-                Seed all
+                {op.label}
               </button>
-              <button className="btn ghost" disabled={busy !== null} onClick={() => tool("reset")}>
-                Reset trail
-              </button>
-            </div>
-          </aside>
-        </div>
-      </main>
+            ))}
+          </div>
+          <div className="toolbtns">
+            <button disabled={busy !== null} onClick={() => tool("seed_all")}>
+              Seed all
+            </button>
+            <button disabled={busy !== null} onClick={() => tool("reset")}>
+              Reset
+            </button>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
@@ -313,14 +269,15 @@ function ActionCard({
   const disabled = busy !== null;
 
   return (
-    <article className={`card sev-${sev}`}>
+    <article className="card">
       <div className="event-head">
         <div>
           <div className="event-title">
-            <span className={`badge ${sev}`}>{SEV_LABEL[sev]}</span>
             <h3>{formatToken(a.action_type)}</h3>
           </div>
-          <p>{formatToken(a.category)}</p>
+          <p className="event-sub">
+            {formatToken(a.category)} · <span className={`sev ${sev}`}>{SEV_LABEL[sev]}</span>
+          </p>
         </div>
         <span className="time">{timeAgo(a.created_at)}</span>
       </div>
@@ -331,78 +288,26 @@ function ActionCard({
 
       <div className="meta">
         <span>
-          agent <b>{a.agent}</b>
+          {a.agent}
+          {a.target && <> · {a.target}</>}
+          {a.requires_approval ? " · approval required" : " · auto"}
         </span>
-        {a.target && (
-          <span>
-            target <b>{a.target}</b>
-          </span>
-        )}
-        <span>
-          blast radius <b>{a.blast_radius ?? "unknown"}</b>
-        </span>
-        <span>
-          approval <b>{a.requires_approval ? "required" : "auto"}</b>
-        </span>
-        {a.branch && (
-          <span>
-            branch <b>{a.branch}</b>
-          </span>
-        )}
       </div>
 
-      {a.rollback_ref && a.rollback_ref.startsWith("{") && (
-        <div className="meta">
-          <span>
-            rollback <b>snapshot stored</b>
-          </span>
-        </div>
+      {a.safer_alternative && (
+        <div className="safer">{a.safer_alternative}</div>
       )}
 
       {a.preview_url && (
         <div className="safer">
-          <b>Mobile preview:</b>{" "}
           <a href={a.preview_url} target="_blank" rel="noopener noreferrer">
-            Open Limrun stream
+            Preview
           </a>
-        </div>
-      )}
-
-      {a.pr_urls && a.pr_urls.length > 0 && (
-        <div className="meta">
-          {a.pr_urls.map((url) => (
-            <span key={url}>
-              PR{" "}
-              <a href={url} target="_blank" rel="noopener noreferrer">
-                {url.replace(/^https?:\/\//, "").slice(0, 48)}
-              </a>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {a.replica_id && (
-        <div className="meta">
-          <span>
-            replica <b>{a.replica_id.slice(0, 8)}…</b>
-          </span>
-        </div>
-      )}
-
-      {a.safer_alternative && (
-        <div className="safer">
-          <b>Safer alternative:</b> {a.safer_alternative}
         </div>
       )}
 
       <div className="statusline">
         <span className={`status ${a.status}`}>{formatToken(a.status)}</span>
-        <span className={`tag ${a.source === "llm" ? "src-llm" : ""}`}>
-          {a.source === "llm" ? "LLM classified" : "deterministic"}
-        </span>
-        {a.reviewed_by && (
-          <span className="time">reviewed by {a.reviewed_by}</span>
-        )}
         <div className="actions">
           {canReview && (
             <>

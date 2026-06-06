@@ -12,6 +12,23 @@ Each guarded operation that reaches `applied` status should appear here with:
 
 ---
 
+## [0.2.0] — 2026-06-06
+
+### Added
+
+- **Live executor** for `function.deploy`, `storage.config`, and `auth.config` via InsForge admin REST
+- **Self-contained e2e** — spawns simulated dev server (`npm run e2e`)
+- **Distribution artifacts** — [docs/SHOW_HN.md](./docs/SHOW_HN.md), [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md)
+- **UI polish** — Geist font, landing fade animations, light/dark theme toggle
+
+### Changed
+
+- `auth.config` SQL statements (e.g. DISABLE RLS) use compensating SQL rollback
+- `storage.config` JSON payloads toggle bucket visibility with snapshot rollback
+- `function.deploy` JSON payloads create/update edge functions with code snapshot rollback
+
+---
+
 ## Unreleased
 
 ### Multi-platform integration

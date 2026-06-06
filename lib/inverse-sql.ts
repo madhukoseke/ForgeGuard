@@ -5,6 +5,10 @@ const ADD_COLUMN =
   /^\s*alter\s+table\s+(\w+)\s+add\s+column\s+(\w+)\s+([\w\s().,'"-]+)\s*;?\s*$/i;
 const CREATE_TABLE =
   /^\s*create\s+table\s+(?:if\s+not\s+exists\s+)?(\w+)\s/i;
+const DISABLE_RLS =
+  /^\s*alter\s+table\s+(\w+)\s+disable\s+row\s+level\s+security\s*;?\s*$/i;
+const ENABLE_RLS =
+  /^\s*alter\s+table\s+(\w+)\s+enable\s+row\s+level\s+security\s*;?\s*$/i;
 
 /** Known demo column types when we cannot introspect. */
 const DEMO_COLUMN_TYPES: Record<string, string> = {
@@ -34,6 +38,18 @@ export function inverseSql(statement: string): string | null {
   if (create) {
     const [, table] = create;
     return `DROP TABLE IF EXISTS ${table};`;
+  }
+
+  const disableRls = sql.match(DISABLE_RLS);
+  if (disableRls) {
+    const [, table] = disableRls;
+    return `ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;`;
+  }
+
+  const enableRls = sql.match(ENABLE_RLS);
+  if (enableRls) {
+    const [, table] = enableRls;
+    return `ALTER TABLE ${table} DISABLE ROW LEVEL SECURITY;`;
   }
 
   return null;

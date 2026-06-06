@@ -21,6 +21,18 @@ export interface MigrationRecord {
   createdAt?: string;
 }
 
+export interface FunctionRecord {
+  id?: string;
+  slug: string;
+  name?: string;
+  description?: string;
+  code?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+  deployed_at?: string;
+}
+
 function normalizeCredentials(
   input: InsForgeCredentials | { baseUrl: string; adminKey: string },
 ): InsForgeCredentials {
@@ -167,5 +179,126 @@ export class InsForgeClient {
       throw new Error(`InsForge query ${table} failed (${resp.status})`);
     }
     return (await resp.json()) as T[];
+  }
+
+  async listBuckets(): Promise<string[]> {
+    const resp = await fetch(`${this.url}/api/storage/buckets`, {
+      headers: this.headers(),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      throw new Error(`InsForge list buckets failed (${resp.status})`);
+    }
+    if (typeof body === "object" && body !== null && "buckets" in body) {
+      return (body as { buckets: string[] }).buckets;
+    }
+    return Array.isArray(body) ? (body as string[]) : [];
+  }
+
+  async createBucket(bucketName: string, isPublic = false): Promise<void> {
+    const resp = await fetch(`${this.url}/api/storage/buckets`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ bucketName, isPublic }),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const msg =
+        typeof body === "object" && body !== null && "message" in body
+          ? String((body as { message: unknown }).message)
+          : `InsForge create bucket failed (${resp.status})`;
+      throw new Error(msg);
+    }
+  }
+
+  async updateBucketVisibility(bucketName: string, isPublic: boolean): Promise<void> {
+    const resp = await fetch(`${this.url}/api/storage/buckets/${encodeURIComponent(bucketName)}`, {
+      method: "PATCH",
+      headers: this.headers(),
+      body: JSON.stringify({ isPublic }),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const msg =
+        typeof body === "object" && body !== null && "message" in body
+          ? String((body as { message: unknown }).message)
+          : `InsForge update bucket failed (${resp.status})`;
+      throw new Error(msg);
+    }
+  }
+
+  async deleteBucket(bucketName: string): Promise<void> {
+    const resp = await fetch(`${this.url}/api/storage/buckets/${encodeURIComponent(bucketName)}`, {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    if (!resp.ok && resp.status !== 404) {
+      throw new Error(`InsForge delete bucket failed (${resp.status})`);
+    }
+  }
+
+  async getFunction(slug: string): Promise<FunctionRecord | null> {
+    const resp = await fetch(`${this.url}/api/functions/${encodeURIComponent(slug)}`, {
+      headers: this.headers(),
+    });
+    if (resp.status === 404) return null;
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      throw new Error(`InsForge get function failed (${resp.status})`);
+    }
+    return body as FunctionRecord;
+  }
+
+  async createFunction(input: {
+    slug: string;
+    name: string;
+    code: string;
+    description?: string;
+    status?: string;
+  }): Promise<FunctionRecord> {
+    const resp = await fetch(`${this.url}/api/functions`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(input),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const msg =
+        typeof body === "object" && body !== null && "message" in body
+          ? String((body as { message: unknown }).message)
+          : `InsForge create function failed (${resp.status})`;
+      throw new Error(msg);
+    }
+    return body as FunctionRecord;
+  }
+
+  async updateFunction(
+    slug: string,
+    input: { name?: string; code?: string; description?: string; status?: string },
+  ): Promise<FunctionRecord> {
+    const resp = await fetch(`${this.url}/api/functions/${encodeURIComponent(slug)}`, {
+      method: "PUT",
+      headers: this.headers(),
+      body: JSON.stringify(input),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const msg =
+        typeof body === "object" && body !== null && "message" in body
+          ? String((body as { message: unknown }).message)
+          : `InsForge update function failed (${resp.status})`;
+      throw new Error(msg);
+    }
+    return body as FunctionRecord;
+  }
+
+  async deleteFunction(slug: string): Promise<void> {
+    const resp = await fetch(`${this.url}/api/functions/${encodeURIComponent(slug)}`, {
+      method: "DELETE",
+      headers: this.headers(),
+    });
+    if (!resp.ok && resp.status !== 404) {
+      throw new Error(`InsForge delete function failed (${resp.status})`);
+    }
   }
 }
