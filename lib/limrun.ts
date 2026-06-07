@@ -9,13 +9,26 @@ export interface LimrunPreview {
 }
 
 interface IosInstanceResponse {
-  id: string;
+  id?: string;
+  metadata?: {
+    id: string;
+    organizationId?: string;
+  };
   status?: {
     streamUrl?: string;
     signedStreamUrl?: string;
     endpointWebSocketUrl?: string;
     token?: string;
+    state?: string;
   };
+}
+
+function instanceId(data: IosInstanceResponse): string {
+  return data.metadata?.id ?? data.id ?? "";
+}
+
+function streamUrl(data: IosInstanceResponse): string | null {
+  return data.status?.signedStreamUrl ?? data.status?.streamUrl ?? null;
 }
 
 function getLimApiKey(): string | null {
@@ -67,12 +80,10 @@ async function limrunFetch<T>(
 async function getExistingInstance(id: string): Promise<LimrunPreview | null> {
   try {
     const data = await limrunFetch<IosInstanceResponse>(`/v1/ios_instances/${encodeURIComponent(id)}`);
-    const url =
-      data.status?.signedStreamUrl ??
-      data.status?.streamUrl ??
-      null;
-    if (!url) return null;
-    return { instanceId: data.id, previewUrl: url };
+    const url = streamUrl(data);
+    const resolvedId = instanceId(data);
+    if (!url || !resolvedId) return null;
+    return { instanceId: resolvedId, previewUrl: url };
   } catch {
     return null;
   }
@@ -83,14 +94,12 @@ async function createIosInstance(): Promise<LimrunPreview> {
     method: "POST",
     body: JSON.stringify({ wait: true }),
   });
-  const url =
-    data.status?.signedStreamUrl ??
-    data.status?.streamUrl ??
-    null;
-  if (!url) {
+  const url = streamUrl(data);
+  const resolvedId = instanceId(data);
+  if (!url || !resolvedId) {
     throw new Error("Limrun instance created but no stream URL returned");
   }
-  return { instanceId: data.id, previewUrl: url };
+  return { instanceId: resolvedId, previewUrl: url };
 }
 
 /** Resolve a signed stream URL — reuse LIMRUN_INSTANCE_ID or create a new instance. */
