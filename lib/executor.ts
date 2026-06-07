@@ -3,8 +3,11 @@
 import {
   branchNameForAction,
   createBranch,
+  isBranchCliFallbackError,
+  isBranchContextError,
   mergeBranch,
   resetBranch,
+  switchToParentBranch,
 } from "./branch-cli";
 import {
   InsForgeClient,
@@ -58,6 +61,45 @@ export function buildCompensatingSql(statement: string): string | null {
   return inverseSql(statement);
 }
 
+/** CREATE TABLE/INDEX that already exist — desired state is satisfied. */
+export function isIdempotentDuplicateError(
+  statement: string,
+  message: string,
+): boolean {
+  if (!/already exists/i.test(message)) return false;
+
+  const sql = statement.trim();
+  const createTable = sql.match(
+    /^\s*create\s+table\s+(?:if\s+not\s+exists\s+)?(?:(\w+)\.)?"?(\w+)"?/i,
+  );
+  if (createTable) {
+    const table = createTable[2] ?? createTable[1];
+    return message.toLowerCase().includes(table.toLowerCase());
+  }
+
+  const createIndex = sql.match(
+    /^\s*create\s+(?:unique\s+)?index\s+(?:if\s+not\s+exists\s+)?"?(\w+)"?/i,
+  );
+  if (createIndex) {
+    return message.toLowerCase().includes(createIndex[1].toLowerCase());
+  }
+
+  return false;
+}
+
+async function runSqlIdempotent(
+  client: InsForgeClient,
+  statement: string,
+): Promise<void> {
+  try {
+    await client.runRawSql(statement);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isIdempotentDuplicateError(statement, msg)) return;
+    throw err;
+  }
+}
+
 export function serializeRollback(snapshot: RollbackSnapshot): string {
   return JSON.stringify(snapshot);
 }
@@ -94,6 +136,43 @@ function snapshotFor(
   };
 }
 
+async function applyDbMigrationDirect(
+  client: InsForgeClient,
+  action: AgentAction,
+  statement: string,
+  compensating: string,
+  mode: ReturnType<typeof getExecutorMode>,
+): Promise<ExecuteResult> {
+  if (mode === "migrations") {
+    const version = migrationVersion();
+    const name = `${migrationNameFromStatement(statement)}-${action.id.slice(0, 8)}`;
+    try {
+      await client.createMigration({ version, name, sql: statement });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!isIdempotentDuplicateError(statement, msg)) throw err;
+    }
+    return {
+      applied: true,
+      rollback_ref: serializeRollback(
+        snapshotFor(action, compensating, {
+          mode: "migrations",
+          migration_version: version,
+          migration_name: name,
+        }),
+      ),
+    };
+  }
+
+  await runSqlIdempotent(client, statement);
+  return {
+    applied: true,
+    rollback_ref: serializeRollback(
+      snapshotFor(action, compensating, { mode: "insforge" }),
+    ),
+  };
+}
+
 async function applyDbMigrationLive(action: AgentAction): Promise<ExecuteResult> {
   const client = InsForgeClient.fromEnv();
   if (!client) {
@@ -111,6 +190,9 @@ async function applyDbMigrationLive(action: AgentAction): Promise<ExecuteResult>
   }
 
   const mode = getExecutorMode();
+
+  // Ensure linked InsForge projects aren't stuck on a preview branch checkout.
+  await switchToParentBranch().catch(() => {});
 
   // Option B — InsForge CLI branches (local dev only).
   if (isBranchCliEnabled()) {
@@ -141,7 +223,7 @@ async function applyDbMigrationLive(action: AgentAction): Promise<ExecuteResult>
         };
       }
 
-      await branchClient.runRawSql(statement);
+      await runSqlIdempotent(branchClient, statement);
       await mergeBranch(branch);
       return {
         applied: true,
@@ -151,38 +233,52 @@ async function applyDbMigrationLive(action: AgentAction): Promise<ExecuteResult>
         ),
       };
     } catch (err) {
+      await switchToParentBranch().catch(() => {});
       const msg = err instanceof Error ? err.message : String(err);
+      if (isBranchCliFallbackError(msg)) {
+        try {
+          return await applyDbMigrationDirect(
+            client,
+            action,
+            statement,
+            compensating,
+            mode,
+          );
+        } catch (directErr) {
+          const directMsg =
+            directErr instanceof Error ? directErr.message : String(directErr);
+          return { applied: false, rollback_ref: "", error: directMsg };
+        }
+      }
       return { applied: false, rollback_ref: "", error: msg };
     }
   }
 
   // Option A — direct apply on parent project.
   try {
-    if (mode === "migrations") {
-      const version = migrationVersion();
-      const name = `${migrationNameFromStatement(statement)}-${action.id.slice(0, 8)}`;
-      await client.createMigration({ version, name, sql: statement });
-      return {
-        applied: true,
-        rollback_ref: serializeRollback(
-          snapshotFor(action, compensating, {
-            mode: "migrations",
-            migration_version: version,
-            migration_name: name,
-          }),
-        ),
-      };
-    }
-
-    await client.runRawSql(statement);
-    return {
-      applied: true,
-      rollback_ref: serializeRollback(
-        snapshotFor(action, compensating, { mode: "insforge" }),
-      ),
-    };
+    return await applyDbMigrationDirect(
+      client,
+      action,
+      statement,
+      compensating,
+      mode,
+    );
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    let msg = err instanceof Error ? err.message : String(err);
+    if (isBranchContextError(msg)) {
+      try {
+        await switchToParentBranch();
+        return await applyDbMigrationDirect(
+          client,
+          action,
+          statement,
+          compensating,
+          mode,
+        );
+      } catch (retryErr) {
+        msg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+      }
+    }
     return { applied: false, rollback_ref: "", error: msg };
   }
 }

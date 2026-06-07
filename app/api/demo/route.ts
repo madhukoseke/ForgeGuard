@@ -45,6 +45,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, count: results.length });
   }
 
+  if (bodyRecord.action === "seed_baseline") {
+    const baseline = DEMO_OPS[DEMO_OPS.length - 1];
+    const { action } = await guardOp(baseline);
+    return NextResponse.json({ ok: true, id: action.id, severity: action.severity });
+  }
+
   const index = Number(bodyRecord.index);
   if (!Number.isInteger(index) || index < 0 || index >= DEMO_OPS.length) {
     return NextResponse.json({ error: "invalid op index" }, { status: 400 });

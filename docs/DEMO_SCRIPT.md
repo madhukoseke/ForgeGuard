@@ -82,7 +82,7 @@ Show status → **rejected**.
 
 ## Export checklist
 
-- [ ] MP4 or GIF under 15 MB for GitHub README
+- [ ] MP4 or GIF under 15 MB for GitHub README → save to [docs/assets/](./assets/)
 - [ ] Upload to Memoir repo artifacts folder (when granted access)
 - [ ] Link in [CHANGELOG.md](../CHANGELOG.md) under Unreleased
 - [ ] Thumbnail: dashboard with one pending high-severity card

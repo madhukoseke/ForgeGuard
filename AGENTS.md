@@ -5,7 +5,7 @@
 
 This project uses [InsForge](https://insforge.dev): an all-in-one, open-source Postgres-based backend (BaaS) that gives this app a database, authentication, file storage, edge functions, realtime, an AI model gateway, and payments through one platform.
 
-- **Project:** **forgeguard-9da08a04ab4d** (API base `https://nxe94w9u-6cu.us-west.insforge.app`)
+- **Project:** **ForgeGuard** (API base from `INSFORGE_URL` in `.env.local`)
 - **Skills:** these InsForge skills are installed for supported coding agents. Reach for them before implementing any InsForge feature instead of guessing the API:
   - `insforge`: app code with the `@insforge/sdk` client (database CRUD, auth, storage, edge functions, realtime, AI, email, and Stripe payments).
   - `insforge-cli`: backend and infrastructure via the `insforge` CLI (projects, SQL, migrations, RLS policies, storage buckets, functions, secrets, payment setup, schedules, deploys).
@@ -19,4 +19,9 @@ Key patterns:
 - Database inserts take an array: `insert([{ ... }])`.
 - Reference users with `auth.users(id)`; use `auth.uid()` in RLS policies.
 - For storage uploads, persist both the returned `url` and `key`.
+
+## Demo
+
+Local demo requires no InsForge credentials: `npm run dev` → `/dashboard` → **Run demo** (`D`).
+Headless verification: `npm run demo:e2e`. Recording script: [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md).
 <!-- INSFORGE:END -->

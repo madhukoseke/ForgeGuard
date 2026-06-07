@@ -1,0 +1,378 @@
+/* ============================================================
+   ForgeGuard — guard engine (plain JS, exported to window.FG)
+   - AgentAction model
+   - canned proposed ops + their classification
+   - deterministic (Layer 1) + llm (Layer 2) source tagging
+   - in-memory store with a simulated polling API
+   ============================================================ */
+(function () {
+  "use strict";
+
+  const AGENTS = ["claude-code", "devin", "replicas"];
+  const rid = (n = 4) =>
+    Array.from({ length: n }, () => "0123456789abcdef"[(Math.random() * 16) | 0]).join("");
+  const pick = (a) => a[(Math.random() * a.length) | 0];
+
+  // ---- canned proposed operations (the "Simulate an agent" chips) ----
+  // Each entry is a template; the store fills in id/time/session/etc.
+  const OPS = {
+    drop_last_login: {
+      label: "Drop last_login column",
+      sevDot: "high",
+      agent: "claude-code",
+      action_type: "db.migration",
+      target: "public.users",
+      statement: "ALTER TABLE users DROP COLUMN last_login;",
+      diff: [
+        ["ctx", " table public.users"],
+        ["del", "-  last_login   timestamptz   -- 5 non-null values"],
+      ],
+      severity: "high",
+      category: "data_loss",
+      rationale:
+        "Dropping a populated column is irreversible — the 5 timestamps in last_login are destroyed and cannot be recovered after commit.",
+      blast_radius: "5 rows",
+      requires_approval: true,
+      source: "llm",
+      safer_alternative:
+        "Soft-deprecate instead: rename to last_login_deprecated and stop writing to it for one release, or add a deleted_at column and never hard-drop.",
+    },
+    truncate_orders: {
+      label: "Truncate orders",
+      sevDot: "critical",
+      agent: "devin",
+      action_type: "db.migration",
+      target: "public.orders",
+      statement: "TRUNCATE TABLE orders RESTART IDENTITY CASCADE;",
+      diff: [
+        ["ctx", " table public.orders"],
+        ["del", "-  12,480 rows  (CASCADE → order_items, refunds)"],
+      ],
+      severity: "critical",
+      category: "destructive",
+      rationale:
+        "TRUNCATE … CASCADE empties orders and every table referencing it. 12,480 rows plus child records are deleted with no WHERE clause and no transaction log to replay.",
+      blast_radius: "12,480 rows",
+      requires_approval: true,
+      source: "deterministic",
+      safer_alternative:
+        "Archive then delete in a transaction: INSERT INTO orders_archive SELECT * FROM orders WHERE …; then a scoped DELETE you can roll back.",
+    },
+    avatars_public: {
+      label: "Make avatars bucket public",
+      sevDot: "high",
+      agent: "claude-code",
+      action_type: "storage.config",
+      target: "storage://avatars",
+      statement: 'UPDATE storage.buckets SET public = true WHERE id = \'avatars\';',
+      diff: [
+        ["ctx", " bucket avatars"],
+        ["del", "-  public: false"],
+        ["add", "+  public: true   -- anonymous read on every object"],
+      ],
+      severity: "high",
+      category: "security",
+      rationale:
+        "Flipping the bucket to public grants anonymous read to all current and future objects, including any PII or signed uploads mistakenly stored there.",
+      blast_radius: "all objects",
+      requires_approval: true,
+      source: "llm",
+      safer_alternative:
+        "Keep the bucket private and serve images through short-lived signed URLs (createSignedUrl, 1h TTL) so access stays scoped per request.",
+    },
+    disable_rls: {
+      label: "Disable RLS on profiles",
+      sevDot: "critical",
+      agent: "replicas",
+      action_type: "auth.config",
+      target: "public.profiles",
+      statement: "ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;",
+      diff: [
+        ["ctx", " table public.profiles"],
+        ["del", "-  row level security: ENABLED"],
+        ["add", "+  row level security: DISABLED   -- every role reads every row"],
+      ],
+      severity: "critical",
+      category: "security",
+      rationale:
+        "Disabling RLS removes per-row tenant isolation. The anon and authenticated roles can read and write every user's profile, not just their own.",
+      blast_radius: "all tenants",
+      requires_approval: true,
+      source: "llm",
+      safer_alternative:
+        "Leave RLS enabled and add a scoped policy: CREATE POLICY own_profile ON profiles USING (auth.uid() = user_id).",
+    },
+    blocking_index: {
+      label: "Blocking index on orders",
+      sevDot: "medium",
+      agent: "devin",
+      action_type: "db.migration",
+      target: "public.orders",
+      statement: "CREATE INDEX idx_orders_created ON orders (created_at);",
+      diff: [
+        ["ctx", " table public.orders"],
+        ["add", "+  index idx_orders_created  (ACCESS EXCLUSIVE lock held during build)"],
+      ],
+      severity: "medium",
+      category: "migration_risk",
+      rationale:
+        "A plain CREATE INDEX takes an ACCESS EXCLUSIVE lock and blocks writes to a 12k-row hot table for the duration of the build.",
+      blast_radius: "writes blocked",
+      requires_approval: true,
+      source: "deterministic",
+      safer_alternative:
+        "Build it without locking: CREATE INDEX CONCURRENTLY idx_orders_created ON orders (created_at).",
+    },
+    widen_grants: {
+      label: "Grant anon write on payments",
+      sevDot: "critical",
+      agent: "replicas",
+      action_type: "auth.config",
+      target: "public.payments",
+      statement: "GRANT INSERT, UPDATE, DELETE ON payments TO anon;",
+      diff: [
+        ["ctx", " role anon"],
+        ["add", "+  GRANT insert,update,delete ON public.payments  -- unauthenticated writes"],
+      ],
+      severity: "critical",
+      category: "security",
+      rationale:
+        "Granting write on payments to the anon role lets unauthenticated callers create or alter payment records directly through the public API.",
+      blast_radius: "payments table",
+      requires_approval: true,
+      source: "llm",
+      safer_alternative:
+        "Keep payments writes server-side only: route through an authenticated Edge Function with the service_role key, never the anon grant.",
+    },
+    add_nullable: {
+      label: "Add nullable column",
+      sevDot: "low",
+      agent: "claude-code",
+      action_type: "db.migration",
+      target: "public.users",
+      statement: "ALTER TABLE users ADD COLUMN locale text;",
+      diff: [
+        ["ctx", " table public.users"],
+        ["add", "+  locale   text   NULL   -- no default, no rewrite"],
+      ],
+      severity: "low",
+      category: "migration_risk",
+      rationale:
+        "Adding a nullable column with no default is metadata-only on Postgres — no table rewrite, no lock contention, no data touched.",
+      blast_radius: "0 rows",
+      requires_approval: false,
+      source: "deterministic",
+      safer_alternative: null,
+    },
+    create_index_cc: {
+      label: "Create index concurrently",
+      sevDot: "safe",
+      agent: "devin",
+      action_type: "db.migration",
+      target: "public.sessions",
+      statement: "CREATE INDEX CONCURRENTLY idx_sessions_uid ON sessions (user_id);",
+      diff: [
+        ["ctx", " table public.sessions"],
+        ["add", "+  index idx_sessions_uid  CONCURRENTLY  (no write lock)"],
+      ],
+      severity: "safe",
+      category: "benign",
+      rationale:
+        "CONCURRENTLY builds the index without an exclusive lock, so reads and writes continue uninterrupted. No approval needed.",
+      blast_radius: "non-blocking",
+      requires_approval: false,
+      source: "deterministic",
+      safer_alternative: null,
+    },
+    deploy_fn: {
+      label: "Deploy resize-avatar fn",
+      sevDot: "safe",
+      agent: "claude-code",
+      action_type: "function.deploy",
+      target: "fn://resize-avatar",
+      statement: "supabase functions deploy resize-avatar --no-verify-jwt=false",
+      diff: [
+        ["ctx", " function resize-avatar"],
+        ["add", "+  v7  (jwt verification: on, +12 LOC)"],
+      ],
+      severity: "safe",
+      category: "benign",
+      rationale:
+        "Routine function redeploy with JWT verification left on and no change to data access scope. Auto-allowed.",
+      blast_radius: "1 function",
+      requires_approval: false,
+      source: "llm",
+      safer_alternative: null,
+    },
+  };
+
+  const CHIP_ORDER = [
+    "drop_last_login",
+    "truncate_orders",
+    "avatars_public",
+    "disable_rls",
+    "blocking_index",
+    "widen_grants",
+    "add_nullable",
+    "create_index_cc",
+  ];
+
+  // initial status from the classification
+  function initialStatus(op) {
+    return op.requires_approval ? "pending" : "auto_allowed";
+  }
+
+  // ---- in-memory store ----
+  let actions = [];
+  let seq = 1;
+  let failNext = false; // resilience hook for the demo
+
+  function build(opKey) {
+    const op = OPS[opKey];
+    if (!op) throw new Error("unknown op " + opKey);
+    const now = new Date();
+    return {
+      id: "act_" + String(seq++).padStart(4, "0") + "_" + rid(3),
+      created_at: now.toISOString(),
+      agent: op.agent,
+      session_id: "sess_" + rid(6),
+      action_type: op.action_type,
+      target: op.target,
+      statement: op.statement,
+      diff: op.diff,
+      severity: op.severity,
+      category: op.category,
+      rationale: op.rationale,
+      blast_radius: op.blast_radius,
+      requires_approval: op.requires_approval,
+      status: initialStatus(op),
+      reviewed_by: null,
+      reviewed_at: null,
+      safer_alternative: op.safer_alternative,
+      branch: "agent/" + op.agent + "/" + rid(4),
+      rollback_ref: "fg_" + rid(8),
+      source: op.source,
+      _key: opKey,
+      _isNew: true,
+      _appliedSafer: false,
+    };
+  }
+
+  // ---- public API (promise-based, mimics a network round trip) ----
+  const latency = () => 120 + Math.random() * 160;
+  const wait = (v) => new Promise((res) => setTimeout(() => res(v), latency()));
+
+  const api = {
+    // GET /api/actions  — reverse chronological
+    getActions() {
+      if (failNext) {
+        failNext = false;
+        return new Promise((_, rej) => setTimeout(() => rej(new Error("network")), 140));
+      }
+      return wait(actions.slice().reverse().map((a) => ({ ...a })));
+    },
+
+    // POST /api/guard/op  — push a proposed op through the chokepoint
+    postOp(opKey) {
+      const a = build(opKey);
+      actions.push(a);
+      return wait({ ...a });
+    },
+
+    // POST /api/actions/:id/approve
+    approve(id, reviewer = "you@forgeguard") {
+      const a = actions.find((x) => x.id === id);
+      if (a) {
+        const appliedSafer = !!a.safer_alternative;
+        a.status = "applied";
+        a.reviewed_by = reviewer;
+        a.reviewed_at = new Date().toISOString();
+        a._appliedSafer = appliedSafer;
+      }
+      return wait(a ? { ...a } : null);
+    },
+
+    reject(id, reviewer = "you@forgeguard") {
+      const a = actions.find((x) => x.id === id);
+      if (a) {
+        a.status = "rejected";
+        a.reviewed_by = reviewer;
+        a.reviewed_at = new Date().toISOString();
+      }
+      return wait(a ? { ...a } : null);
+    },
+
+    rollback(id, reviewer = "you@forgeguard") {
+      const a = actions.find((x) => x.id === id);
+      if (a) {
+        a.status = "rolled_back";
+        a.reviewed_by = reviewer;
+        a.reviewed_at = new Date().toISOString();
+      }
+      return wait(a ? { ...a } : null);
+    },
+
+    reset() {
+      actions = [];
+      seq = 1;
+      return wait(true);
+    },
+
+    seedAll() {
+      // a believable starting trail, oldest first
+      const order = ["create_index_cc", "add_nullable", "deploy_fn", "blocking_index"];
+      order.forEach((k) => {
+        const a = build(k);
+        a._isNew = false;
+        // pre-resolve a couple so the trail looks lived-in
+        if (k === "blocking_index") {
+          a.status = "applied";
+          a.reviewed_by = "you@forgeguard";
+          a.reviewed_at = new Date().toISOString();
+        }
+        actions.push(a);
+      });
+      return wait(true);
+    },
+
+    // demo hook: cause the next poll to fail once (proves resilience)
+    _blip() { failNext = true; },
+  };
+
+  // ---- tiny SQL syntax highlighter ----
+  const KW = new Set(
+    ("alter table drop column add truncate restart identity cascade create index concurrently on " +
+      "update set where row level security disable enable grant insert delete to using policy " +
+      "select from values into is not null default and or as references")
+      .split(" ")
+  );
+  function escapeHtml(s) {
+    return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  }
+  function highlightSQL(sql) {
+    // tokenize: comments, strings, numbers, identifiers/keywords, punctuation
+    const re = /(--[^\n]*)|('(?:[^']|'')*')|(\b\d[\d,\.]*\b)|([A-Za-z_][A-Za-z0-9_]*)|([(),.;=*<>]+)|(\s+)/g;
+    let out = "";
+    let m;
+    while ((m = re.exec(sql))) {
+      if (m[1]) out += `<span class="tok-com">${escapeHtml(m[1])}</span>`;
+      else if (m[2]) out += `<span class="tok-str">${escapeHtml(m[2])}</span>`;
+      else if (m[3]) out += `<span class="tok-num">${escapeHtml(m[3])}</span>`;
+      else if (m[4]) {
+        const low = m[4].toLowerCase();
+        if (KW.has(low)) out += `<span class="tok-kw">${escapeHtml(m[4])}</span>`;
+        else out += `<span class="tok-id">${escapeHtml(m[4])}</span>`;
+      } else if (m[5]) out += `<span class="tok-punc">${escapeHtml(m[5])}</span>`;
+      else out += escapeHtml(m[0]);
+    }
+    return out;
+  }
+
+  window.FG = {
+    OPS,
+    CHIP_ORDER,
+    AGENTS,
+    api,
+    highlightSQL,
+  };
+})();

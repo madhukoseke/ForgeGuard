@@ -82,6 +82,8 @@ export interface AgentAction {
   replica_id: string | null;
   pr_urls: string[] | null;
   preview_url: string | null;
+  /** Set on approve when a safer_alternative was noted at review time. */
+  applied_safer?: boolean;
 }
 
 export const SEVERITY_ORDER: Severity[] = [

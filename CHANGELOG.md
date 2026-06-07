@@ -31,6 +31,13 @@ Each guarded operation that reaches `applied` status should appear here with:
 
 ## Unreleased
 
+### Demo & dashboard
+
+- **Cinematic demo** — **Run demo** (`D`) now covers all 6 scenes from [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md): block → approve → rollback → auto-allow → reject.
+- **`npm run demo:e2e`** — headless verification of the full cinematic flow; included in CI.
+- **README** — "Try the demo" section, corrected project layout, design prototypes under `docs/design/`.
+- **Distribution recording** — follow [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md) to capture MP4/GIF; add to `docs/assets/` and link from README when ready.
+
 ### Multi-platform integration
 
 - **InsForge executor** — Real apply/rollback via admin REST when `FORGEGUARD_EXECUTOR=insforge`; simulated by default for offline demo.

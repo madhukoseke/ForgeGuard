@@ -12,6 +12,19 @@ import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
+/** Browser / health-check visits use GET; Replicas delivers events via POST. */
+export async function GET() {
+  const secretConfigured = Boolean(process.env.REPLICAS_WEBHOOK_SECRET?.trim());
+  return NextResponse.json({
+    ok: true,
+    endpoint: "replicas-webhook",
+    method: "POST",
+    signature_required: secretConfigured,
+    message:
+      "Replicas webhook is active. Configure this URL in Replicas; events are delivered as POST with x-replicas-signature when REPLICAS_WEBHOOK_SECRET is set.",
+  });
+}
+
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const secret = process.env.REPLICAS_WEBHOOK_SECRET?.trim();

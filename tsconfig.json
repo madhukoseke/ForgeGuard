@@ -20,5 +20,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "insforge/functions", "ui-only-backup"]
+  "exclude": ["node_modules", "insforge/functions", "ui-only-backup", "docs/design"]
 }

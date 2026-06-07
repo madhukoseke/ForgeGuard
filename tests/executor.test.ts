@@ -5,6 +5,7 @@ import {
   rollbackOp,
   buildCompensatingSql,
   getExecutorMode,
+  isIdempotentDuplicateError,
 } from "../lib/insforge-executor";
 import type { AgentAction } from "../lib/types";
 
@@ -67,6 +68,19 @@ test("simulated rollbackOp succeeds", async () => {
     if (prev === undefined) delete process.env.FORGEGUARD_EXECUTOR;
     else process.env.FORGEGUARD_EXECUTOR = prev;
   }
+});
+
+test("isIdempotentDuplicateError matches CREATE TABLE already exists", () => {
+  const sql =
+    "CREATE TABLE feature_flags (id uuid primary key default gen_random_uuid(), key text not null);";
+  assert.equal(
+    isIdempotentDuplicateError(sql, 'relation "feature_flags" already exists'),
+    true,
+  );
+  assert.equal(
+    isIdempotentDuplicateError(sql, 'relation "other_table" already exists'),
+    false,
+  );
 });
 
 test("getExecutorMode defaults to simulated without credentials", () => {

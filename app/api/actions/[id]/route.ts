@@ -91,11 +91,13 @@ export async function PATCH(
       reviewed_at: string;
       rollback_ref: string;
       branch: string;
+      applied_safer: boolean;
     }> = {
       status: "applied",
       reviewed_by: reviewer,
       reviewed_at: now,
       rollback_ref: result.rollback_ref,
+      applied_safer: !!row.safer_alternative,
     };
     if (result.branch) patch.branch = result.branch;
 

@@ -46,6 +46,26 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000). No environment variables
 required — the default in-memory store and heuristic classifier work out of the box.
 
+## Try the demo
+
+Open the [operator dashboard](http://localhost:3000/dashboard). No credentials needed.
+
+| Action | How |
+|--------|-----|
+| **Run demo** | Click **Run demo** or press `D` — automated 6-scene flow (block → approve → rollback → auto-allow → reject) |
+| Simulate ops | Click simulator chips or press `1`–`8` |
+| Seed all | Press `S` or use **Seed all** |
+| Reset trail | Press `X` |
+
+Recording script for Memoir / Show HN / README GIF: [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md)
+
+Verify headless:
+
+```bash
+npm run demo:e2e   # cinematic dashboard flow (all 6 scenes)
+npm run e2e        # guard API flow including reject
+```
+
 ## API
 
 **Submit a proposed operation** (agent chokepoint):
@@ -155,7 +175,8 @@ No public API — partnership and release artifacts: [docs/MEMOIR.md](./docs/MEM
 
 ```bash
 npm test                      # unit tests (simulated executor)
-npm run e2e                   # end-to-end guard flow (dev server required)
+npm run e2e                   # end-to-end guard flow (spawns dev server)
+npm run demo:e2e              # cinematic dashboard demo (6 scenes)
 npm run bootstrap:insforge    # apply schema to linked InsForge project
 npm run integration:insforge  # live InsForge connectivity check
 npm run precommit             # typecheck + lint + test + build
@@ -164,23 +185,27 @@ npm run precommit             # typecheck + lint + test + build
 ## Project layout
 
 ```
-app/api/guard/op/   Chokepoint — agents POST here
-app/api/actions/    Audit log + review endpoints
-app/page.tsx        Dashboard
-lib/prefilter.ts    Layer 1 rules
-lib/classifier.ts   Layer 2 LLM / heuristic
-lib/guard.ts        Orchestration + auto-apply
-lib/executor.ts     InsForge apply/rollback (REST + optional CLI branches)
-lib/insforge-executor.ts  Public executor re-exports
-lib/insforge-client.ts  InsForge Admin REST client
-lib/replicas.ts     Replicas webhook helpers
-lib/limrun.ts       Limrun preview URLs
-lib/memoir-events.ts  Optional Memoir outbound events
-lib/store.ts        Memory or InsForge REST persistence
-app/api/webhooks/replicas/  Replicas event ingestion
-docs/REPLICAS.md    Replicas environment setup
-docs/MEMOIR.md      Memoir partnership guide
-sql/schema.sql      Postgres schema for InsForge persistence
+app/(marketing)/page.tsx   Landing page
+app/dashboard/page.tsx     Operator dashboard + demo simulator
+app/api/guard/op/          Chokepoint — agents POST here
+app/api/actions/           Audit log + review endpoints
+app/api/demo/              Demo seed/reset/run canned ops
+lib/prefilter.ts           Layer 1 rules
+lib/classifier.ts          Layer 2 LLM / heuristic
+lib/guard.ts               Orchestration + auto-apply
+lib/executor.ts            InsForge apply/rollback (REST + optional CLI branches)
+lib/insforge-executor.ts   Public executor re-exports
+lib/insforge-client.ts     InsForge Admin REST client
+lib/replicas.ts            Replicas webhook helpers
+lib/limrun.ts              Limrun preview URLs
+lib/memoir-events.ts       Optional Memoir outbound events
+lib/store.ts               Memory or InsForge REST persistence
+app/api/webhooks/replicas/ Replicas event ingestion
+docs/DEMO_SCRIPT.md        Screen recording checklist
+docs/design/               UI reference prototypes (excluded from root build)
+docs/REPLICAS.md           Replicas environment setup
+docs/MEMOIR.md             Memoir partnership guide
+sql/schema.sql             Postgres schema for InsForge persistence
 ```
 
 ## Deploy

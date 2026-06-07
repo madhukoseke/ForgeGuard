@@ -6,6 +6,7 @@ export {
   applyOp,
   rollbackOp,
   buildCompensatingSql,
+  isIdempotentDuplicateError,
   parseRollbackRef,
   serializeRollback,
   branchCliHint,
