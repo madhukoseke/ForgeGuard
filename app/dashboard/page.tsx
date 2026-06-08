@@ -18,6 +18,7 @@ const SEV_LABEL: Record<Severity, string> = {
 };
 
 const OPERATOR_TOKEN_KEY = "forgeguard_operator_token";
+const DEMO_STEP_COUNT = 6;
 
 const FILTERS: { id: string; label: string; test?: (a: AgentAction) => boolean }[] = [
   { id: "all", label: "All" },
@@ -236,14 +237,22 @@ export default function Dashboard() {
   );
 
   const review = useCallback(
-    async (id: string, decision: string): Promise<boolean> => {
+    async (
+      id: string,
+      decision: string,
+      applySafer = false,
+    ): Promise<boolean> => {
       setBusy(id);
       setError(null);
       try {
         const res = await fetchWithOperatorToken(`/api/actions/${id}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ decision, reviewed_by: "operator" }),
+          body: JSON.stringify({
+            decision,
+            reviewed_by: "operator",
+            ...(decision === "approve" && applySafer ? { apply_safer: true } : {}),
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -254,8 +263,8 @@ export default function Dashboard() {
         const action = data.action as AgentAction | undefined;
         if (decision === "approve") {
           toast(
-            action?.applied_safer || action?.safer_alternative
-              ? "Approved · safer version noted"
+            action?.applied_safer
+              ? "Approved · safer SQL applied"
               : "Approved & applied",
           );
         } else if (decision === "reject") {
@@ -312,7 +321,7 @@ export default function Dashboard() {
     setDemo({ running: true, step: 2 });
     const pendingDrop =
       dropId ?? actions.find((a) => a.status === "pending" && a.statement.includes("DROP COLUMN"))?.id;
-    if (pendingDrop) await review(pendingDrop, "approve");
+    if (pendingDrop) await review(pendingDrop, "approve", true);
     if (await pause(2400)) {
       stopDemo();
       return;
@@ -386,7 +395,7 @@ export default function Dashboard() {
       else if (k === "x") void tool("reset");
       else if (k === "a") {
         const p = actions.find((a) => a.status === "pending");
-        if (p) void review(p.id, "approve");
+        if (p) void review(p.id, "approve", !!p.safer_alternative);
       } else if (k === "r") {
         const ap = actions.find((a) => a.status === "applied" || a.status === "auto_allowed");
         if (ap) void review(ap.id, "rollback");
@@ -484,7 +493,7 @@ export default function Dashboard() {
           <h2 className="text-sm font-medium text-muted">Simulate</h2>
           {demo.running && (
             <span className="text-xs text-subtle">
-              demo step {demo.step}/4
+              demo step {demo.step}/{DEMO_STEP_COUNT}
             </span>
           )}
           <div className="ml-auto flex flex-wrap gap-4">
@@ -611,7 +620,7 @@ function ActionCard({
 }: {
   a: AgentAction;
   busy: string | null;
-  onReview: (id: string, decision: string) => void;
+  onReview: (id: string, decision: string, applySafer?: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const sev = a.severity;
@@ -669,6 +678,7 @@ function ActionCard({
         {a.target && <> · {a.target}</>}
         {a.requires_approval ? " · approval required" : " · auto"}
         {a.branch && <> · {a.branch}</>}
+        {a.replica_id && <> · replica {a.replica_id}</>}
       </p>
 
       {a.safer_alternative && (
@@ -678,16 +688,30 @@ function ActionCard({
         </div>
       )}
 
-      {a.preview_url && (
-        <p className="mt-3 text-sm">
-          <a
-            href={a.preview_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-foreground underline underline-offset-[3px] transition-opacity hover:opacity-80"
-          >
-            Preview
-          </a>
+      {(a.preview_url || (a.pr_urls && a.pr_urls.length > 0)) && (
+        <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {a.preview_url && (
+            <a
+              href={a.preview_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground underline underline-offset-[3px] transition-opacity hover:opacity-80"
+            >
+              Preview
+            </a>
+          )}
+          {a.pr_urls?.map((url, i) => (
+            <a
+              key={url}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={url}
+              className="text-foreground underline underline-offset-[3px] transition-opacity hover:opacity-80"
+            >
+              {a.pr_urls!.length === 1 ? "View PR" : `PR ${i + 1}`}
+            </a>
+          ))}
         </p>
       )}
 
@@ -702,7 +726,7 @@ function ActionCard({
           {formatToken(a.status)}
         </span>
         {a.applied_safer && (
-          <span className="text-xs text-success">safer version noted</span>
+          <span className="text-xs text-success">safer SQL applied</span>
         )}
         {a.diff && (
           <button
@@ -721,7 +745,7 @@ function ActionCard({
                 type="button"
                 className="inline-flex h-9 items-center rounded-full bg-foreground px-5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-35"
                 disabled={disabled}
-                onClick={() => onReview(a.id, "approve")}
+                onClick={() => onReview(a.id, "approve", !!a.safer_alternative)}
               >
                 {a.safer_alternative ? "Approve safe version" : "Approve"}
               </button>

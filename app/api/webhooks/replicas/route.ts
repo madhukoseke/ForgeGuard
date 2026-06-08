@@ -8,6 +8,7 @@ import {
   pickActionsToEnrich,
   verifyReplicasSignature,
 } from "@/lib/replicas";
+import { isProduction } from "@/lib/production";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,13 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const secret = process.env.REPLICAS_WEBHOOK_SECRET?.trim();
+
+  if (!secret && isProduction()) {
+    return NextResponse.json(
+      { error: "REPLICAS_WEBHOOK_SECRET required in production" },
+      { status: 401 },
+    );
+  }
 
   if (secret) {
     const sig = req.headers.get("x-replicas-signature");

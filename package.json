@@ -24,6 +24,7 @@
     "e2e": "tsx scripts/e2e.ts",
     "demo:e2e": "tsx scripts/demo-e2e.ts",
     "e2e:replicas": "tsx scripts/replicas-e2e.ts",
+    "e2e:limrun": "tsx --env-file=.env.local scripts/limrun-e2e.ts",
     "demo:insforge": "tsx scripts/insforge-live-demo.ts",
     "fix:npm-cache": "bash scripts/fix-npm-cache.sh",
     "seed": "tsx scripts/seed.ts",
@@ -34,7 +35,6 @@
   },
   "dependencies": {
     "geist": "^1.7.2",
-    "lucide-react": "^1.17.0",
     "next": "15.5.18",
     "react": "18.3.1",
     "react-dom": "18.3.1"

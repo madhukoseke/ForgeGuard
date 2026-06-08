@@ -82,7 +82,7 @@ export interface AgentAction {
   replica_id: string | null;
   pr_urls: string[] | null;
   preview_url: string | null;
-  /** Set on approve when a safer_alternative was noted at review time. */
+  /** True when approve applied safer_alternative SQL instead of the original statement. */
   applied_safer?: boolean;
 }
 

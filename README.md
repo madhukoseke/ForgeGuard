@@ -119,7 +119,7 @@ Copy `.env.example` to `.env.local`. All variables are optional for local use.
 | `OPENROUTER_API_KEY` | Layer 2 LLM classifier |
 | `INSFORGE_MODEL_GATEWAY_URL` | Gateway base URL (default: OpenRouter) |
 | `FORGEGUARD_MODEL` | Model id for classifier |
-| `FORGEGUARD_OPERATOR_TOKEN` | Require token on POST/PATCH routes |
+| `FORGEGUARD_OPERATOR_TOKEN` | Protect mutations and audit reads (required in production) |
 | `FORGEGUARD_BASE_URL` | Target URL for `seed` / `e2e` scripts |
 | `REPLICAS_WEBHOOK_SECRET` | Verify Replicas webhook signatures |
 | `LIM_API_KEY` / `LIMRUN_INSTANCE_ID` | Limrun mobile preview for pending ops |
@@ -134,7 +134,17 @@ npm run bootstrap:insforge
 Then set `FORGEGUARD_STORE=insforge` and `FORGEGUARD_EXECUTOR=insforge` in `.env.local`.
 
 When `FORGEGUARD_OPERATOR_TOKEN` is set, send `Authorization: Bearer <token>`
-or `x-forgeguard-token: <token>` on mutation requests.
+or `x-forgeguard-token: <token>` on `GET /api/actions` and mutation routes.
+In production (`NODE_ENV=production` or Vercel), the token is **required** — requests without it return 401.
+
+### Production checklist
+
+Before deploying to Vercel with real InsForge credentials:
+
+1. Set `FORGEGUARD_OPERATOR_TOKEN` to a strong secret (dashboard stores it in `localStorage` for API calls).
+2. Set `FORGEGUARD_STORE=insforge` and `FORGEGUARD_EXECUTOR=insforge` — the default memory store is per-instance and ephemeral on serverless.
+3. Set `REPLICAS_WEBHOOK_SECRET` if exposing `POST /api/webhooks/replicas`.
+4. Run `npm run bootstrap:insforge` and apply the `applied_safer` column migration if upgrading an existing project.
 
 ## For coding agents
 
@@ -176,6 +186,7 @@ No public API — partnership and release artifacts: [docs/MEMOIR.md](./docs/MEM
 ```bash
 npm test                      # unit tests (simulated executor)
 npm run e2e                   # end-to-end guard flow (spawns dev server)
+npm run e2e:replicas          # Replicas webhook enrichment flow
 npm run demo:e2e              # cinematic dashboard demo (6 scenes)
 npm run bootstrap:insforge    # apply schema to linked InsForge project
 npm run integration:insforge  # live InsForge connectivity check

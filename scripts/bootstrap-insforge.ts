@@ -57,7 +57,8 @@ create table if not exists agent_actions (
   source            text not null default 'deterministic' check (source in ('deterministic', 'llm')),
   replica_id        text,
   pr_urls           jsonb,
-  preview_url       text
+  preview_url       text,
+  applied_safer     boolean not null default false
 );
 
 create index if not exists agent_actions_created_at_idx on agent_actions (created_at desc);
@@ -117,6 +118,7 @@ const ENRICHMENT_COLUMNS_SQL = `
 alter table agent_actions add column if not exists replica_id text;
 alter table agent_actions add column if not exists pr_urls jsonb;
 alter table agent_actions add column if not exists preview_url text;
+alter table agent_actions add column if not exists applied_safer boolean not null default false;
 `.trim();
 
 async function main() {
@@ -142,9 +144,10 @@ async function main() {
 
   console.log("\n--- Add to .env.local / Vercel ---");
   console.log(`INSFORGE_URL=${client.url}`);
-  console.log(`INSFORGE_KEY=${client.key}`);
+  console.log("INSFORGE_KEY=<copy from InsForge dashboard>");
   console.log("FORGEGUARD_STORE=insforge");
   console.log("FORGEGUARD_EXECUTOR=insforge");
+  console.log("FORGEGUARD_OPERATOR_TOKEN=<generate a strong secret>");
   console.log("\nBootstrap complete.");
 }
 

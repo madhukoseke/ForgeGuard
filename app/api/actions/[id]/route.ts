@@ -4,12 +4,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireOperatorToken } from "@/lib/api-auth";
 import { applyOp, rollbackOp, getExecutorMode, executorIsLive } from "@/lib/insforge-executor";
 import { emitMemoirAppliedEvent } from "@/lib/memoir-events";
+import { resolveSaferStatement } from "@/lib/safer-sql";
 import { getStore } from "@/lib/store";
-import { ActionStatus } from "@/lib/types";
+import { ActionStatus, AgentAction } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 type Decision = "approve" | "reject" | "rollback";
+
+function storeErrorResponse(err: unknown): NextResponse {
+  const message = err instanceof Error ? err.message : "Store update failed";
+  return NextResponse.json({ error: message }, { status: 502 });
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -58,12 +64,19 @@ export async function PATCH(
         { status: 409 },
       );
     }
-    const updated = await store.update(id, {
-      status: "rejected",
-      reviewed_by: reviewer,
-      reviewed_at: now,
-    });
-    return NextResponse.json({ action: updated });
+    try {
+      const updated = await store.update(id, {
+        status: "rejected",
+        reviewed_by: reviewer,
+        reviewed_at: now,
+      });
+      if (!updated) {
+        return NextResponse.json({ error: "action not found" }, { status: 404 });
+      }
+      return NextResponse.json({ action: updated });
+    } catch (err) {
+      return storeErrorResponse(err);
+    }
   }
 
   if (decision === "approve") {
@@ -74,7 +87,26 @@ export async function PATCH(
       );
     }
 
-    const result = await applyOp(row);
+    const wantsSafer =
+      bodyRecord.apply_safer !== false && !!row.safer_alternative?.trim();
+    let applySafer = false;
+    let toApply: AgentAction = row;
+    if (wantsSafer) {
+      const saferStmt = resolveSaferStatement(row);
+      if (!saferStmt) {
+        return NextResponse.json(
+          {
+            error:
+              "No executable safer SQL for this op — set apply_safer: false to approve the original statement",
+          },
+          { status: 400 },
+        );
+      }
+      applySafer = true;
+      toApply = { ...row, statement: saferStmt };
+    }
+
+    const result = await applyOp(toApply);
     if (!result.applied && getExecutorMode() !== "simulated") {
       return NextResponse.json(
         {
@@ -97,13 +129,20 @@ export async function PATCH(
       reviewed_by: reviewer,
       reviewed_at: now,
       rollback_ref: result.rollback_ref,
-      applied_safer: !!row.safer_alternative,
+      applied_safer: applySafer,
     };
     if (result.branch) patch.branch = result.branch;
 
-    const updated = await store.update(id, patch);
-    if (updated) void emitMemoirAppliedEvent(updated);
-    return NextResponse.json({ action: updated, applied: result.applied });
+    try {
+      const updated = await store.update(id, patch);
+      if (!updated) {
+        return NextResponse.json({ error: "action not found" }, { status: 404 });
+      }
+      void emitMemoirAppliedEvent(updated);
+      return NextResponse.json({ action: updated, applied: result.applied });
+    } catch (err) {
+      return storeErrorResponse(err);
+    }
   }
 
   // rollback
@@ -115,7 +154,7 @@ export async function PATCH(
   }
 
   const result = await rollbackOp(row);
-    if (!result.applied && executorIsLive()) {
+  if (!result.applied && executorIsLive()) {
     return NextResponse.json(
       {
         error: result.error ?? "Failed to roll back operation on InsForge",
@@ -125,10 +164,17 @@ export async function PATCH(
     );
   }
 
-  const updated = await store.update(id, {
-    status: "rolled_back",
-    reviewed_by: reviewer,
-    reviewed_at: now,
-  });
-  return NextResponse.json({ action: updated, rolled_back: result.applied });
+  try {
+    const updated = await store.update(id, {
+      status: "rolled_back",
+      reviewed_by: reviewer,
+      reviewed_at: now,
+    });
+    if (!updated) {
+      return NextResponse.json({ error: "action not found" }, { status: 404 });
+    }
+    return NextResponse.json({ action: updated, rolled_back: result.applied });
+  } catch (err) {
+    return storeErrorResponse(err);
+  }
 }

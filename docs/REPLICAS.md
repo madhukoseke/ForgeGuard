@@ -62,6 +62,23 @@ Pass `session_id` equal to the replica workspace id in guard requests so webhook
 
 Run the **DROP TABLE (critical)** preset in the ForgeGuard dashboard — it uses `agent: "replicas"` from `lib/demo-ops.ts`.
 
+## Verify locally
+
+```bash
+npm run e2e:replicas
+```
+
+Spawns a dev server with `REPLICAS_WEBHOOK_SECRET` set, submits a guarded Replicas op, posts a signed webhook, and asserts the audit row gets `replica_id` and `pr_urls`. Included in CI.
+
+## Production checklist
+
+1. ForgeGuard (Vercel): set `REPLICAS_WEBHOOK_SECRET` to the same value as the Replicas webhook secret.
+2. Replicas environment variables: `FORGEGUARD_BASE_URL`, `INSFORGE_URL`, `INSFORGE_KEY` (and optional `FORGEGUARD_OPERATOR_TOKEN`).
+3. Replicas webhook URL: `https://<your-forgeguard-host>/api/webhooks/replicas`.
+4. System prompt: agents must POST to `/api/guard/op` before any InsForge change; use `session_id` = replica workspace id.
+5. Smoke test: `GET https://<host>/api/webhooks/replicas` should return `{ ok: true, signature_required: true }`.
+6. `GET /api/health` should report `replicas_webhook: true`.
+
 ## API reference
 
 - [Replicas API](https://docs.tryreplicas.com/features/api)

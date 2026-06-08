@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isProduction } from "./production";
 
 const TOKEN_HEADER = "x-forgeguard-token";
 
 export function requireOperatorToken(req: NextRequest): NextResponse | null {
-  const expected = process.env.FORGEGUARD_OPERATOR_TOKEN;
-  if (!expected) return null;
+  const expected = process.env.FORGEGUARD_OPERATOR_TOKEN?.trim();
+
+  if (!expected) {
+    if (isProduction()) {
+      return NextResponse.json(
+        {
+          error:
+            "unauthorized: set FORGEGUARD_OPERATOR_TOKEN in production",
+        },
+        { status: 401 },
+      );
+    }
+    return null;
+  }
 
   const headerToken = req.headers.get(TOKEN_HEADER);
   const bearer = req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];

@@ -24,7 +24,8 @@ create table if not exists agent_actions (
   source            text not null default 'deterministic' check (source in ('deterministic', 'llm')),
   replica_id        text,                     -- Replicas workspace id (webhook enrichment)
   pr_urls           jsonb,                    -- PR URLs opened by Replicas agent
-  preview_url       text                      -- Limrun signed stream URL for mobile review
+  preview_url       text,                     -- Limrun signed stream URL for mobile review
+  applied_safer     boolean not null default false  -- true when approve applied safer_alternative SQL
 );
 
 create index if not exists agent_actions_session_id_idx on agent_actions (session_id);

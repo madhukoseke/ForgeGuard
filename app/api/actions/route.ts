@@ -1,11 +1,14 @@
 // List the audit trail for the dashboard.
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireOperatorToken } from "@/lib/api-auth";
 import { getStore, getStoreListMeta } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const unauthorized = requireOperatorToken(req);
+  if (unauthorized) return unauthorized;
   try {
     const rows = await getStore().list();
     const meta = getStoreListMeta();

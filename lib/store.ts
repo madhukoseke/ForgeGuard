@@ -9,6 +9,7 @@
 //
 // The interface is identical either way, so the dashboard/API don't care.
 
+import { isProduction } from "./production";
 import { AgentAction, ActionStatus } from "./types";
 
 export interface ActionStore {
@@ -131,7 +132,12 @@ class InsForgeStore implements ActionStore {
   // (pre-replica_id / pr_urls / preview_url) still accept inserts.
   private serializeRow(row: AgentAction | Partial<AgentAction>) {
     const out: Record<string, unknown> = { ...row };
-    for (const key of ["replica_id", "pr_urls", "preview_url"] as const) {
+    for (const key of [
+      "replica_id",
+      "pr_urls",
+      "preview_url",
+      "applied_safer",
+    ] as const) {
       if (out[key] == null) delete out[key];
     }
     return out;
@@ -211,7 +217,6 @@ class InsForgeStore implements ActionStore {
     id: string,
     patch: Partial<AgentAction>,
   ): Promise<AgentAction | null> {
-    const cached = this.cachedList()?.find((r) => r.id === id) ?? null;
     try {
       const resp = await this.fetchWithTimeout(
         this.url(`?id=eq.${encodeURIComponent(id)}`),
@@ -221,13 +226,21 @@ class InsForgeStore implements ActionStore {
           body: JSON.stringify(this.serializeRow(patch)),
         },
       );
-      if (!resp.ok) return cached;
+      if (!resp.ok) await this.insforgeError("update", resp);
       const rows = (await resp.json()) as AgentAction[];
-      const updated = rows[0] ?? cached;
-      if (updated) this.patchCache(id, updated);
+      const updated = rows[0] ?? null;
+      if (!updated) {
+        throw new Error(`InsForge update failed: no row returned for id ${id}`);
+      }
+      this.patchCache(id, updated);
       return updated;
-    } catch {
-      return cached;
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith("InsForge update")) {
+        throw err;
+      }
+      throw new Error(
+        `InsForge update failed: ${err instanceof Error ? err.message : "network error"}`,
+      );
     }
   }
 
@@ -252,6 +265,11 @@ export function getStore(): ActionStore {
   if (backend === "insforge" && process.env.INSFORGE_URL && process.env.INSFORGE_KEY) {
     store = new InsForgeStore(process.env.INSFORGE_URL, process.env.INSFORGE_KEY);
   } else {
+    if (isProduction() && process.env.VERCEL === "1") {
+      console.warn(
+        "[ForgeGuard] FORGEGUARD_STORE=memory on Vercel — audit data is per-instance and ephemeral. Set FORGEGUARD_STORE=insforge for production.",
+      );
+    }
     store = new MemoryStore();
   }
   return store;

@@ -67,3 +67,6 @@ jobs:
 
       - name: Cinematic demo E2E
         run: npm run demo:e2e
+
+      - name: Replicas webhook E2E
+        run: npm run e2e:replicas
