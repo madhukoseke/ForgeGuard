@@ -9,12 +9,23 @@
 //
 // The interface is identical either way, so the dashboard/API don't care.
 
+import { computeActionSummary, type ActionSummary } from "./action-summary";
 import { isProduction } from "./production";
 import { AgentAction, ActionStatus } from "./types";
+
+export interface ActionListPage {
+  rows: AgentAction[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
 
 export interface ActionStore {
   insert(row: AgentAction): Promise<AgentAction>;
   list(): Promise<AgentAction[]>;
+  listPage(opts: { limit: number; offset: number }): Promise<ActionListPage>;
+  getSummary(): Promise<ActionSummary>;
   get(id: string): Promise<AgentAction | null>;
   update(id: string, patch: Partial<AgentAction>): Promise<AgentAction | null>;
   reset(): Promise<void>;
@@ -30,10 +41,31 @@ class MemoryStore implements ActionStore {
     g.__forgeguard_rows!.unshift(row);
     return row;
   }
-  async list(): Promise<AgentAction[]> {
+  private sorted(): AgentAction[] {
     return [...g.__forgeguard_rows!].sort((a, b) =>
       b.created_at.localeCompare(a.created_at),
     );
+  }
+
+  async list(): Promise<AgentAction[]> {
+    return this.sorted();
+  }
+
+  async listPage(opts: { limit: number; offset: number }): Promise<ActionListPage> {
+    const all = this.sorted();
+    const { limit, offset } = opts;
+    const rows = all.slice(offset, offset + limit);
+    return {
+      rows,
+      total: all.length,
+      limit,
+      offset,
+      has_more: offset + rows.length < all.length,
+    };
+  }
+
+  async getSummary(): Promise<ActionSummary> {
+    return computeActionSummary(this.sorted());
   }
   async get(id: string): Promise<AgentAction | null> {
     return g.__forgeguard_rows!.find((r) => r.id === id) ?? null;
@@ -177,6 +209,15 @@ class InsForgeStore implements ActionStore {
     return saved;
   }
 
+  private parseTotalFromRange(
+    contentRange: string | null,
+    fallback: number,
+  ): number {
+    if (!contentRange) return fallback;
+    const match = contentRange.match(/\/(\d+)$/);
+    return match ? parseInt(match[1], 10) : fallback;
+  }
+
   async list(): Promise<AgentAction[]> {
     try {
       const resp = await this.fetchWithTimeout(this.url("?order=created_at.desc"), {
@@ -196,6 +237,54 @@ class InsForgeStore implements ActionStore {
       this.lastListFromCache = false;
       throw err;
     }
+  }
+
+  async listPage(opts: { limit: number; offset: number }): Promise<ActionListPage> {
+    const { limit, offset } = opts;
+    try {
+      const resp = await this.fetchWithTimeout(
+        this.url(
+          `?order=created_at.desc&limit=${limit}&offset=${offset}`,
+        ),
+        { headers: this.headers({ Prefer: "count=exact" }) },
+      );
+      if (!resp.ok) throw new Error(`InsForge list failed: ${resp.status}`);
+      const rows = (await resp.json()) as AgentAction[];
+      const total = this.parseTotalFromRange(
+        resp.headers.get("content-range"),
+        rows.length + offset,
+      );
+      if (offset === 0) {
+        this.cacheList(rows);
+        this.lastListFromCache = false;
+      }
+      return {
+        rows,
+        total,
+        limit,
+        offset,
+        has_more: offset + rows.length < total,
+      };
+    } catch (err) {
+      const cached = this.cachedList();
+      if (cached) {
+        this.lastListFromCache = true;
+        const rows = cached.slice(offset, offset + limit);
+        return {
+          rows,
+          total: cached.length,
+          limit,
+          offset,
+          has_more: offset + rows.length < cached.length,
+        };
+      }
+      throw err;
+    }
+  }
+
+  async getSummary(): Promise<ActionSummary> {
+    const rows = await this.list();
+    return computeActionSummary(rows);
   }
 
   async get(id: string): Promise<AgentAction | null> {
