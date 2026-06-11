@@ -7,6 +7,8 @@ Thank you for your interest in contributing.
 ```bash
 npm install
 npm run dev          # http://localhost:3000 — dashboard at /dashboard
+npm run mcp          # MCP server on stdio (in-memory demo backend)
+npm run build:mcp    # compile the npx-installable MCP server to dist/
 npm run precommit    # typecheck + lint + test + build (run before opening a PR)
 ```
 

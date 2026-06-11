@@ -11,6 +11,7 @@
 
 import { computeActionSummary, type ActionSummary } from "./action-summary";
 import { isProduction } from "./production";
+import { PostgresStore } from "./store-postgres";
 import { AgentAction, ActionStatus } from "./types";
 
 export interface ActionListPage {
@@ -169,6 +170,8 @@ class InsForgeStore implements ActionStore {
       "pr_urls",
       "preview_url",
       "applied_safer",
+      "injection_findings",
+      "transport",
     ] as const) {
       if (out[key] == null) delete out[key];
     }
@@ -353,6 +356,16 @@ export function getStore(): ActionStore {
   const backend = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();
   if (backend === "insforge" && process.env.INSFORGE_URL && process.env.INSFORGE_KEY) {
     store = new InsForgeStore(process.env.INSFORGE_URL, process.env.INSFORGE_KEY);
+  } else if (backend === "postgres") {
+    const pgStore = PostgresStore.fromEnv();
+    if (pgStore) {
+      store = pgStore;
+    } else {
+      console.warn(
+        "[ForgeGuard] FORGEGUARD_STORE=postgres but DATABASE_URL is unset — falling back to memory store.",
+      );
+      store = new MemoryStore();
+    }
   } else {
     if (isProduction() && process.env.VERCEL === "1") {
       console.warn(

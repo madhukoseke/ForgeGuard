@@ -40,6 +40,11 @@ export function ActionCard({ action: a, busy, onReview }: ActionCardProps) {
               {" "}
               · {a.source === "llm" ? "LLM classified" : "Deterministic"}
             </span>
+            {a.transport === "mcp" && (
+              <span className="ml-2 rounded-full bg-surface-raised px-2 py-0.5 text-[11px] uppercase tracking-wide text-subtle">
+                MCP
+              </span>
+            )}
           </p>
         </div>
         <span className="shrink-0 text-sm tabular-nums text-subtle">
@@ -83,6 +88,25 @@ export function ActionCard({ action: a, busy, onReview }: ActionCardProps) {
         {a.branch && <> · {a.branch}</>}
         {a.replica_id && <> · replica {a.replica_id}</>}
       </p>
+
+      {a.injection_findings && a.injection_findings.length > 0 && (
+        <div className="mt-3 rounded-lg border border-danger/20 bg-danger-muted px-4 py-3 text-sm leading-relaxed text-muted">
+          <span className="font-medium text-danger">
+            Prompt injection detected
+          </span>
+          <ul className="mt-1 space-y-1">
+            {a.injection_findings.map((f, i) => (
+              <li key={`${f.rule}-${i}`} className="break-words">
+                <span className="font-mono text-xs">{f.rule}</span>
+                <span className="text-subtle"> · {f.direction}</span>
+                {f.excerpt && (
+                  <span className="text-subtle"> · “{f.excerpt}”</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {a.safer_alternative && (
         <div className="mt-3 rounded-lg border border-success/20 bg-success-muted px-4 py-3 text-sm leading-relaxed text-muted">

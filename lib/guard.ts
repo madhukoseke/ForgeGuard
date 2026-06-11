@@ -4,6 +4,7 @@
 
 import { randomUUID } from "crypto";
 import { classify, heuristicVerdict } from "./classifier";
+import { scanInbound } from "./injection";
 import { applyOp } from "./insforge-executor";
 import { getExecutorMode } from "./insforge-client";
 import { resolvePreviewUrl, shouldAttachPreview } from "./limrun";
@@ -54,6 +55,8 @@ export interface GuardResult {
 export async function guardOp(op: ProposedOp): Promise<GuardResult> {
   const { verdict: llm, source } = await classify(op);
   const verdict = mergeVerdicts(op, llm);
+  // Record (but don't escalate on) inbound injection patterns for the HTTP path.
+  const injectionFindings = scanInbound([op.statement, op.diff]);
 
   const now = new Date().toISOString();
   const requiresApproval = verdict.requires_approval;
@@ -84,6 +87,8 @@ export async function guardOp(op: ProposedOp): Promise<GuardResult> {
     replica_id: null,
     pr_urls: null,
     preview_url: null,
+    injection_findings: injectionFindings.length > 0 ? injectionFindings : null,
+    transport: "http",
   };
 
   await getStore().insert(action);

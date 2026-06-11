@@ -28,6 +28,9 @@ next-env.d.ts.bak
 
 # InsForge & AI agent skills
 .insforge
+
+# local read-side policy (copy from forgeguard.config.example.json)
+forgeguard.config.json
 .agent
 .agents
 .augment

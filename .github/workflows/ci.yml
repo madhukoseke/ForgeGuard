@@ -37,6 +37,9 @@ jobs:
         env:
           FORGEGUARD_STORE: memory
 
+      - name: Build MCP server
+        run: npm run build:mcp
+
       - name: Check for committed secrets
         run: |
           if git ls-files '.env' '.env.local' '.env.*.local' | grep -q .; then

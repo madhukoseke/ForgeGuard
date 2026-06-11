@@ -179,7 +179,9 @@ async function callModelGateway(op: ProposedOp): Promise<Verdict | null> {
     });
 
     if (!resp.ok) return null;
-    const data = await resp.json();
+    const data = (await resp.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
     const content = data?.choices?.[0]?.message?.content;
     if (!content) return null;
     return coerceVerdict(JSON.parse(content));

@@ -1,8 +1,18 @@
 {
   "name": "forgeguard",
-  "version": "0.2.0",
-  "private": true,
-  "description": "The reliability & observability control plane for agent-built backends on InsForge.",
+  "version": "0.3.0",
+  "description": "Open-source guardrail layer between AI agents and your data: MCP server with audit trail, prompt-injection scanning, and destructive-query detection.",
+  "license": "Apache-2.0",
+  "bin": {
+    "forgeguard-mcp": "dist/mcp/cli.js"
+  },
+  "files": [
+    "dist",
+    "sql",
+    "forgeguard.config.example.json",
+    "README.md",
+    "LICENSE"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/madhukoseke/ForgeGuard.git"
@@ -18,7 +28,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint app components hooks lib tests scripts --max-warnings=0",
+    "mcp": "tsx mcp/cli.ts",
+    "build:mcp": "tsc -p tsconfig.mcp.json",
+    "prepublishOnly": "npm run build:mcp",
+    "lint": "eslint app components hooks lib mcp tests scripts --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
     "e2e": "tsx scripts/e2e.ts",
@@ -34,13 +47,17 @@
     "precommit": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "geist": "^1.7.2",
     "next": "15.5.18",
+    "pg": "^8.21.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "20.14.10",
+    "@types/pg": "^8.20.0",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "autoprefixer": "^10.5.0",

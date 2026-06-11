@@ -6,7 +6,7 @@ create table if not exists agent_actions (
   created_at        timestamptz not null default now(),
   agent             text not null,            -- 'claude-code' | 'devin' | 'replicas'
   session_id        text,
-  action_type       text not null check (action_type in ('db.migration', 'function.deploy', 'storage.config', 'auth.config')),
+  action_type       text not null check (action_type in ('db.migration', 'function.deploy', 'storage.config', 'auth.config', 'data.query', 'data.execute')),
   target            text,                     -- table/function/bucket name
   statement         text not null,            -- raw SQL / config / deploy descriptor
   diff              text,                     -- human-readable diff
@@ -25,8 +25,17 @@ create table if not exists agent_actions (
   replica_id        text,                     -- Replicas workspace id (webhook enrichment)
   pr_urls           jsonb,                    -- PR URLs opened by Replicas agent
   preview_url       text,                     -- Limrun signed stream URL for mobile review
-  applied_safer     boolean not null default false  -- true when approve applied safer_alternative SQL
+  applied_safer     boolean not null default false, -- true when approve applied safer_alternative SQL
+  injection_findings jsonb,                   -- prompt-injection findings (inbound/outbound scanner)
+  transport         text check (transport in ('http', 'mcp'))  -- how the op reached ForgeGuard
 );
+
+-- Upgrade path for existing deployments (no-ops on fresh installs).
+alter table agent_actions add column if not exists injection_findings jsonb;
+alter table agent_actions add column if not exists transport text;
+alter table agent_actions drop constraint if exists agent_actions_action_type_check;
+alter table agent_actions add constraint agent_actions_action_type_check
+  check (action_type in ('db.migration', 'function.deploy', 'storage.config', 'auth.config', 'data.query', 'data.execute'));
 
 create index if not exists agent_actions_session_id_idx on agent_actions (session_id);
 create index if not exists agent_actions_replica_id_idx on agent_actions (replica_id);

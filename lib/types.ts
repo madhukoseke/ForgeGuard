@@ -14,7 +14,20 @@ export type ActionType =
   | "db.migration"
   | "function.deploy"
   | "storage.config"
-  | "auth.config";
+  | "auth.config"
+  | "data.query"
+  | "data.execute";
+
+// How the op reached ForgeGuard.
+export type Transport = "http" | "mcp";
+
+// A prompt-injection finding from the inbound/outbound scanner (lib/injection.ts).
+export interface InjectionFinding {
+  rule: string;
+  severity: Severity;
+  direction: "inbound" | "outbound";
+  excerpt: string;
+}
 
 export type ActionStatus =
   | "pending"
@@ -84,6 +97,10 @@ export interface AgentAction {
   preview_url: string | null;
   /** True when approve applied safer_alternative SQL instead of the original statement. */
   applied_safer?: boolean;
+  /** Prompt-injection findings recorded by the inbound/outbound scanner. */
+  injection_findings?: InjectionFinding[] | null;
+  /** How the op reached ForgeGuard ("http" chokepoint or "mcp" tool call). */
+  transport?: Transport | null;
 }
 
 export const SEVERITY_ORDER: Severity[] = [

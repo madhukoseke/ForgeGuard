@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // node-postgres must stay a runtime require (optional native bindings).
+  serverExternalPackages: ["pg"],
   async headers() {
     return [
       {

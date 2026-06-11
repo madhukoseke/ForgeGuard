@@ -1,8 +1,10 @@
 # ForgeGuard
 
-**The reliability & observability control plane for agent-built backends on [InsForge](https://insforge.dev).**
+**The open-source guardrail layer between AI agents and your data.**
 
 > An AI agent can ship a full-stack app in minutes — and drop your production table in seconds. **ForgeGuard is the seatbelt.**
+
+Agents connect to ForgeGuard as their database tool (MCP). Every query and every write flows through a guard pipeline: policy checks, bidirectional prompt-injection scanning, destructive-statement classification with safer alternatives, and a full audit trail with human-in-the-loop approval.
 
 [![Made with InsForge](https://insforge.dev/badge-made-with-insforge.svg)](https://insforge.dev)
 
@@ -12,10 +14,13 @@
 
 - [What it does](#what-it-does)
 - [Architecture](#architecture)
+- [Quick start: MCP server](#quick-start-mcp-server)
+- [Quick start: dashboard](#quick-start-dashboard)
+- [MCP tools](#mcp-tools)
+- [Prompt-injection scanning](#prompt-injection-scanning)
+- [Read-side policies](#read-side-policies)
 - [Guard pipeline](#guard-pipeline)
-- [Quick start](#quick-start)
-- [Demo dashboard](#demo-dashboard)
-- [API reference](#api-reference)
+- [HTTP API reference](#http-api-reference)
 - [Configuration](#configuration)
 - [Production deployment](#production-deployment)
 - [For coding agents](#for-coding-agents)
@@ -27,22 +32,17 @@
 
 ## What it does
 
-Coding agents propose backend changes (SQL migrations, function deploys, storage/auth config). ForgeGuard sits **in front of InsForge** as a single chokepoint:
-
-1. **Classifies** every op (deterministic rules + optional LLM)
-2. **Logs** a full audit trail with severity, rationale, and blast radius
-3. **Auto-allows** safe ops or **holds** risky ones for human review
-4. **Applies or rolls back** on InsForge when approved
-
 | Capability | What you get |
 |------------|--------------|
-| **Audit trail** | Who proposed what, when, with severity and rationale |
-| **Guardrails** | Layer 1 prefilter → Layer 2 classifier → operator gate |
-| **Dashboard** | Live log with approve, reject, rollback, and cinematic demo |
-| **Rollback** | Compensating SQL or InsForge preview branches |
+| **Middle layer (MCP)** | Agents read/write your database only through ForgeGuard's MCP tools |
+| **Audit trail** | Every request — including reads — logged with severity, rationale, blast radius |
+| **Prompt-injection defense** | Inbound args scanned; query results scanned and poisoned cells redacted |
+| **Destructive-query detection** | `DROP`/`TRUNCATE`/unconditional `DELETE` held for approval with a concrete safer alternative |
+| **Data safeguards** | Denied tables, masked PII columns, row caps — enforced before SQL reaches the database |
+| **Rollback** | Compensating SQL snapshots; one-click rollback from the dashboard |
 
-**Stack:** Next.js 15 · InsForge · Vercel  
-**Op types:** `db.migration` · `function.deploy` · `storage.config` · `auth.config`
+**Backends:** any Postgres (`DATABASE_URL`) · [InsForge](https://insforge.dev) · in-memory simulation (zero-credential demo)
+**Op types:** `data.query` · `data.execute` · `db.migration` · `function.deploy` · `storage.config` · `auth.config`
 
 ---
 
@@ -50,36 +50,131 @@ Coding agents propose backend changes (SQL migrations, function deploys, storage
 
 ```mermaid
 flowchart LR
-  subgraph agents["Coding agents"]
-    A[Claude / Replicas / Devin]
-  end
-
-  subgraph fg["ForgeGuard"]
-    C["POST /api/guard/op"]
-    L1[Layer 1 prefilter]
-    L2[Layer 2 LLM]
-    D[Operator dashboard]
-    C --> L1 --> L2
-    L2 --> D
-  end
-
-  subgraph insforge["InsForge"]
-    I[(Postgres · Auth · Storage · Functions)]
-  end
-
-  A -->|proposed op| C
-  L2 -->|auto-apply| I
-  D -->|approve / rollback| I
+  Agent[AI agent / LLM app] -->|MCP tools| MCP[ForgeGuard MCP server]
+  MCP --> Inbound[Inbound scan: injection + policy]
+  Inbound --> Guard[Guard pipeline: prefilter + classifier]
+  Guard -->|safe| Backend[DataBackend adapter]
+  Guard -->|risky| Hold[Held for human approval]
+  Backend --> PG[(Any Postgres)]
+  Backend --> IF[(InsForge)]
+  Backend --> Outbound[Outbound scan: redact poisoned rows]
+  Outbound --> Agent
+  Guard --> Audit[(Audit trail)]
+  Hold --> Dash[Operator dashboard]
+  Audit --> Dash
 ```
 
-**Editable diagrams (Excalidraw):** open in [excalidraw.com](https://excalidraw.com) or the VS Code extension.
+The Next.js app is the operator dashboard and HTTP chokepoint; the MCP server is a thin entry point sharing the same `lib/` guard pipeline.
 
-| Diagram | File |
-|---------|------|
-| System overview | [docs/diagrams/forgeguard-architecture.excalidraw](./docs/diagrams/forgeguard-architecture.excalidraw) |
-| Guard pipeline | [docs/diagrams/forgeguard-guard-pipeline.excalidraw](./docs/diagrams/forgeguard-guard-pipeline.excalidraw) |
+---
 
-See [docs/diagrams/README.md](./docs/diagrams/README.md) for export instructions.
+## Quick start: MCP server
+
+No credentials required — the default backend is an in-memory simulation with a seeded `users` table.
+
+```bash
+git clone https://github.com/madhukoseke/ForgeGuard.git
+cd ForgeGuard && npm install
+npm run mcp                                        # stdio, demo backend
+npm run mcp -- --database-url postgres://...       # any Postgres
+npm run mcp -- --http 8787                         # Streamable HTTP on :8787
+```
+
+Once published to npm it also runs without cloning: `npx forgeguard-mcp --database-url postgres://...`
+
+### Connect Claude Desktop / Cursor
+
+```json
+{
+  "mcpServers": {
+    "forgeguard": {
+      "command": "npx",
+      "args": [
+        "forgeguard-mcp",
+        "--database-url", "postgres://user:pass@localhost:5432/mydb",
+        "--agent", "claude-desktop"
+      ]
+    }
+  }
+}
+```
+
+From a local clone, use `"command": "npx"`, `"args": ["tsx", "/path/to/ForgeGuard/mcp/cli.ts", ...]`.
+
+With `--database-url`, both the data backend **and** the audit store default to that Postgres (`forgeguard_actions` table, auto-created). Run the dashboard with `FORGEGUARD_STORE=postgres` and the same `DATABASE_URL` to review/approve held ops live.
+
+---
+
+## Quick start: dashboard
+
+```bash
+npm run dev
+```
+
+| URL | Purpose |
+|-----|---------|
+| [localhost:3000](http://localhost:3000) | Landing page |
+| [localhost:3000/dashboard](http://localhost:3000/dashboard) | Operator dashboard + demo |
+
+| Action | Shortcut |
+|--------|----------|
+| Run 6-scene cinematic demo | `D` or **Run demo** |
+| Simulate canned ops | `1`–`8` or click a row |
+| Seed all demo ops | `S` · Reset trail `X` |
+| Approve first pending / rollback last applied | `A` / `R` |
+
+Filter chips include **Requests** (MCP `data.*` traffic) and **Injection** (actions with injection findings). Headless verification: `npm run demo:e2e`.
+
+---
+
+## MCP tools
+
+| Tool | What it does |
+|------|--------------|
+| `query` | Single read-only statement. Policy-checked, row-capped, results masked + injection-scanned. |
+| `execute` | Write/DDL. Classified; safe ops apply instantly, risky ops are **held** and return a pending `action_id` + safer alternative. |
+| `list_tables` / `describe_table` | Schema introspection (also audited). |
+| `get_action_status` | Poll whether a held op was approved, rejected, applied, or rolled back. |
+
+Example `execute` response for `DROP TABLE users;`:
+
+```json
+{
+  "status": "pending",
+  "severity": "critical",
+  "rationale": "Dropping a table permanently destroys the table and all its rows.",
+  "safer_alternative": "Rename the table to `<name>_archived` and drop it after a retention window.",
+  "requires_approval": true
+}
+```
+
+---
+
+## Prompt-injection scanning
+
+Both directions of the AI–data boundary are scanned:
+
+- **Inbound** (agent → database): tool arguments and free-text notes. High-confidence hits are blocked before any SQL reaches the database.
+- **Outbound** (database → agent): query result cells. Stored injection payloads ("ignore previous instructions…", chat-template smuggling, exfiltration URLs, encoded payloads) are replaced with `[FORGEGUARD:REDACTED]` and recorded on the audit row.
+
+Layer 1 is deterministic patterns (always on, offline). Set `FORGEGUARD_INJECTION_LLM=1` to add an LLM scan through the same model gateway as the risk classifier — it fails open to Layer 1.
+
+---
+
+## Read-side policies
+
+Copy [`forgeguard.config.example.json`](./forgeguard.config.example.json) to `forgeguard.config.json` (or point `FORGEGUARD_CONFIG` at a path):
+
+```json
+{
+  "denied_tables": ["api_keys", "secrets"],
+  "masked_columns": ["password_hash", "users.email"],
+  "max_rows": 200,
+  "allowed_statements": ["select", "with", "insert", "update", "create", "alter"]
+}
+```
+
+Violations are rejected before the backend is touched and logged to the audit trail.
 
 ---
 
@@ -89,72 +184,30 @@ Every proposed operation follows the same path:
 
 ```mermaid
 flowchart TD
-  POST[Agent POSTs to /api/guard/op] --> V[Validate payload]
-  V --> P[Layer 1 — deterministic prefilter]
+  IN[MCP tool call or POST /api/guard/op] --> POL[Policy check]
+  POL --> INJ[Inbound injection scan]
+  INJ --> P[Layer 1 — deterministic prefilter]
   P --> C[Layer 2 — LLM or heuristic fallback]
   C --> M[Merge verdicts]
   M --> S[Save audit row]
   S --> Q{Requires approval?}
-  Q -->|No| A[200 — auto-apply on InsForge]
-  Q -->|Yes| W[202 — pending operator review]
+  Q -->|No| A[Apply via DataBackend]
+  Q -->|Yes| W[Held — pending operator review]
   W --> O[Dashboard: approve / reject / rollback]
   O --> A
+  A --> OUT[Outbound scan + masking]
 ```
 
-**Safe example** — `ADD COLUMN nickname` → **200**, applied immediately.  
-**Risky example** — `DROP COLUMN last_login` → **202**, blocked with `rationale`, `blast_radius`, and `safer_alternative` until an operator approves.
+**Safe example** — `ADD COLUMN nickname` → applied immediately.
+**Risky example** — `DROP COLUMN last_login` → held with `rationale`, `blast_radius`, and `safer_alternative` until an operator approves.
 
 ---
 
-## Quick start
+## HTTP API reference
 
-No credentials required for local demo.
-
-```bash
-git clone https://github.com/madhukoseke/ForgeGuard.git
-cd ForgeGuard
-npm install
-npm run dev
-```
-
-| URL | Purpose |
-|-----|---------|
-| [localhost:3000](http://localhost:3000) | Landing page |
-| [localhost:3000/dashboard](http://localhost:3000/dashboard) | Operator dashboard + demo |
-
-Default mode uses an **in-memory store** and **heuristic classifier** — works fully offline.
-
----
-
-## Demo dashboard
-
-Open the [operator dashboard](http://localhost:3000/dashboard).
-
-| Action | Shortcut |
-|--------|----------|
-| Run 6-scene cinematic demo | `D` or **Run demo** |
-| Simulate canned ops | `1`–`8` or click a row |
-| Seed all demo ops | `S` |
-| Reset audit trail | `X` |
-| Approve first pending op | `A` |
-| Rollback last applied op | `R` |
-
-Recording guide: [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md)
-
-**Headless verification:**
-
-```bash
-npm run demo:e2e    # 6-scene cinematic flow
-npm run e2e         # full API lifecycle (approve, rollback, reject)
-```
-
----
-
-## API reference
+The original chokepoint remains for agents that integrate over HTTP.
 
 ### Submit a proposed operation
-
-Agents must POST here **before** touching InsForge.
 
 ```bash
 curl -X POST http://localhost:3000/api/guard/op \
@@ -173,46 +226,35 @@ curl -X POST http://localhost:3000/api/guard/op \
 | **200** | Auto-allowed and applied (or simulated locally) |
 | **202** | Pending — includes `rationale`, `blast_radius`, `safer_alternative` |
 
-### List audit trail
+### List audit trail / review / health
 
 ```bash
 curl 'http://localhost:3000/api/actions?limit=50&offset=0'
-```
-
-Returns `actions`, `pagination`, and `summary` (counts for filters).
-
-### Review an action
-
-```bash
 curl -X PATCH http://localhost:3000/api/actions/<id> \
   -H 'content-type: application/json' \
   -d '{ "decision": "approve", "reviewed_by": "operator" }'
-```
-
-| `decision` | Effect |
-|------------|--------|
-| `approve` | Apply on InsForge (uses safer SQL when `apply_safer: true`) |
-| `reject` | Mark rejected, no changes applied |
-| `rollback` | Revert a previously applied op |
-
-### Health check
-
-```bash
 curl http://localhost:3000/api/health
 ```
+
+`decision` is `approve` (uses safer SQL when `apply_safer: true`), `reject`, or `rollback`.
 
 ---
 
 ## Configuration
 
-Copy `.env.example` → `.env.local`. All variables are optional for local demo.
+Copy `.env.example` → `.env.local`. All variables are optional for the local demo.
 
 <details>
 <summary><strong>Environment variables</strong></summary>
 
 | Variable | Purpose |
 |----------|---------|
-| `FORGEGUARD_STORE` | `memory` (default) or `insforge` |
+| `FORGEGUARD_BACKEND` | Data backend: `memory` (default), `postgres`, `insforge` |
+| `DATABASE_URL` / `FORGEGUARD_DATABASE_URL` | Postgres connection string |
+| `FORGEGUARD_STORE` | Audit store: `memory` (default), `postgres`, `insforge` |
+| `FORGEGUARD_CONFIG` | Path to the read-side policy file |
+| `FORGEGUARD_INJECTION_LLM` | `1` to enable the LLM injection scan |
+| `FORGEGUARD_AGENT` | Agent label on MCP audit rows |
 | `FORGEGUARD_EXECUTOR` | `simulated` (default), `insforge`, or `migrations` |
 | `FORGEGUARD_BRANCH_MODE` | `cli` for preview-branch rollback (local only) |
 | `INSFORGE_URL` / `INSFORGE_KEY` | InsForge project credentials |
@@ -227,42 +269,32 @@ Copy `.env.example` → `.env.local`. All variables are optional for local demo.
 
 </details>
 
-**Bootstrap InsForge** (applies `sql/schema.sql`):
+**Bootstrap InsForge** (applies `sql/schema.sql`): `npm run bootstrap:insforge`, then set `FORGEGUARD_STORE=insforge` and `FORGEGUARD_EXECUTOR=insforge`.
 
-```bash
-npm run bootstrap:insforge
-```
-
-Then set `FORGEGUARD_STORE=insforge` and `FORGEGUARD_EXECUTOR=insforge`.
-
-**Auth:** When `FORGEGUARD_OPERATOR_TOKEN` is set, send `Authorization: Bearer <token>` or `x-forgeguard-token: <token>` on protected routes. In production (Vercel / `NODE_ENV=production`), the token is required.
+**Auth:** when `FORGEGUARD_OPERATOR_TOKEN` is set, send `Authorization: Bearer <token>` or `x-forgeguard-token: <token>` on protected routes. In production it is required.
 
 ---
 
 ## Production deployment
 
-Before deploying with real InsForge credentials:
-
 1. Set **`FORGEGUARD_OPERATOR_TOKEN`** — strong secret for API and dashboard
-2. Set **`FORGEGUARD_STORE=insforge`** and **`FORGEGUARD_EXECUTOR=insforge`** — memory store is ephemeral on serverless
+2. Set a durable audit store — **`FORGEGUARD_STORE=postgres`** (+ `DATABASE_URL`) or **`insforge`**; memory is ephemeral on serverless
 3. Set **`REPLICAS_WEBHOOK_SECRET`** if using `POST /api/webhooks/replicas`
-4. Run **`npm run bootstrap:insforge`** on your InsForge project
+4. For InsForge: run **`npm run bootstrap:insforge`** and set `FORGEGUARD_EXECUTOR=insforge`
 
 ```bash
 vercel link && vercel --prod
 ```
 
-Set env vars in the Vercel dashboard (see `.env.example`).
-
 ---
 
 ## For coding agents
 
-**Do not** apply migrations, deploy functions, or change storage/auth config directly on InsForge.
+**Do not** run SQL, apply migrations, deploy functions, or change storage/auth config directly against the database.
 
-1. POST every proposed change to **`/api/guard/op`**
-2. If response is **`applied`** (200) — proceed (or apply yourself in simulated mode)
-3. If **`pending`** (202) — stop, show `rationale` and `safer_alternative` to the operator, wait for approval
+1. Use the ForgeGuard MCP tools (`query`, `execute`) — or POST to **`/api/guard/op`**
+2. If the response is **`applied`** — proceed
+3. If **`pending`** — stop, surface `rationale` and `safer_alternative` to the operator, and poll `get_action_status` for the outcome. Never retry a held statement verbatim.
 
 ---
 
@@ -270,55 +302,60 @@ Set env vars in the Vercel dashboard (see `.env.example`).
 
 | Partner | Role | Docs |
 |---------|------|------|
-| **InsForge** | Target backend — apply, rollback, audit persistence | Core (this README) |
-| **[Replicas](https://tryreplicas.com/)** | Background agents POST ops before InsForge changes | [docs/REPLICAS.md](./docs/REPLICAS.md) |
+| **Any Postgres** | Guarded data backend + audit store | This README |
+| **InsForge** | Guarded backend — apply, rollback, audit persistence | This README |
+| **[Replicas](https://tryreplicas.com/)** | Background agents POST ops before backend changes | [docs/REPLICAS.md](./docs/REPLICAS.md) |
 | **[Limrun](https://lim.run/)** | Mobile preview URL for pending ops (medium+ severity) | Set `LIM_API_KEY` |
 | **[Memoir](https://www.trymemoir.ai/)** | Optional outbound events | [docs/MEMOIR.md](./docs/MEMOIR.md) |
-
-**Replicas webhook:** `POST /api/webhooks/replicas`
 
 ---
 
 ## Development
 
 ```bash
-npm test                 # 47 unit tests
+npm test                 # unit tests
+npm run mcp              # MCP server on stdio
+npm run build:mcp        # compile MCP server to dist/
 npm run e2e              # guard API E2E
-npm run e2e:replicas     # Replicas webhook E2E
 npm run demo:e2e         # cinematic demo E2E
-npm run bootstrap:insforge
-npm run integration:insforge
 npm run precommit        # typecheck + lint + test + build
 ```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) and [SECURITY.md](./SECURITY.md).
 
 ---
 
 ## Project layout
 
 ```
-app/
-  (marketing)/page.tsx      Landing
-  dashboard/page.tsx        Operator UI
-  api/guard/op/             Agent chokepoint
-  api/actions/              Audit log + review
-  api/demo/                 Demo seed / reset
-  api/webhooks/replicas/    Replicas enrichment
+mcp/
+  cli.ts                    forgeguard-mcp entry (stdio + Streamable HTTP)
+  server.ts                 MCP tools → guard pipeline
 
 lib/
-  prefilter.ts              Layer 1 rules
+  backends/                 DataBackend adapters: memory · postgres · insforge
+  data-guard.ts             query/execute guard flow (policy → injection → classify → audit)
+  injection.ts              Bidirectional prompt-injection scanner
+  policy.ts                 Read-side safeguards (forgeguard.config.json)
+  prefilter.ts              Layer 1 destructive-SQL rules
   classifier.ts             Layer 2 LLM / heuristic
-  guard.ts                  Orchestration
+  guard.ts                  HTTP chokepoint orchestration
+  store.ts / store-postgres.ts  Audit persistence (memory · postgres · insforge)
   executor.ts               InsForge apply / rollback
-  store.ts                  Memory or InsForge persistence
+
+app/
+  dashboard/page.tsx        Operator UI (Requests + Injection filters)
+  api/guard/op/             HTTP chokepoint
+  api/actions/              Audit log + review
+  api/demo/                 Demo seed / reset
 
 components/dashboard/       Dashboard UI components
-hooks/                      Dashboard data + demo hooks
-docs/diagrams/              Excalidraw architecture diagrams
-sql/schema.sql              Postgres schema for InsForge
+sql/schema.sql              Postgres schema (InsForge bootstrap)
+forgeguard.config.example.json  Read-side policy template
 ```
 
 ---
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+Apache-2.0 — see [LICENSE](./LICENSE).

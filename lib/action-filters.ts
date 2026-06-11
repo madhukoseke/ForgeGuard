@@ -21,6 +21,16 @@ export const ACTION_FILTERS: ActionFilter[] = [
     test: (a) =>
       ["applied", "rejected", "rolled_back", "auto_allowed"].includes(a.status),
   },
+  {
+    id: "requests",
+    label: "Requests",
+    test: (a) => a.action_type.startsWith("data."),
+  },
+  {
+    id: "injection",
+    label: "Injection",
+    test: (a) => (a.injection_findings?.length ?? 0) > 0,
+  },
 ];
 
 export function filterActions(

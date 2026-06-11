@@ -2,6 +2,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireOperatorToken } from "@/lib/api-auth";
+import { getDataBackend } from "@/lib/backends";
+import { applyDataAction, rollbackDataAction } from "@/lib/data-guard";
 import { applyOp, rollbackOp, getExecutorMode, executorIsLive } from "@/lib/insforge-executor";
 import { emitMemoirAppliedEvent } from "@/lib/memoir-events";
 import { resolveSaferStatement } from "@/lib/safer-sql";
@@ -106,11 +108,17 @@ export async function PATCH(
       toApply = { ...row, statement: saferStmt };
     }
 
-    const result = await applyOp(toApply);
-    if (!result.applied && getExecutorMode() !== "simulated") {
+    const isDataAction = row.action_type.startsWith("data.");
+    const result = isDataAction
+      ? await applyDataAction(toApply)
+      : await applyOp(toApply);
+    const applyIsLive = isDataAction
+      ? getDataBackend().kind !== "memory"
+      : getExecutorMode() !== "simulated";
+    if (!result.applied && applyIsLive) {
       return NextResponse.json(
         {
-          error: result.error ?? "Failed to apply operation on InsForge",
+          error: result.error ?? "Failed to apply operation",
           action: row,
         },
         { status: 502 },
@@ -153,8 +161,14 @@ export async function PATCH(
     );
   }
 
-  const result = await rollbackOp(row);
-  if (!result.applied && executorIsLive()) {
+  const isDataRollback = row.action_type.startsWith("data.");
+  const result = isDataRollback
+    ? await rollbackDataAction(row)
+    : await rollbackOp(row);
+  const rollbackIsLive = isDataRollback
+    ? getDataBackend().kind !== "memory"
+    : executorIsLive();
+  if (!result.applied && rollbackIsLive) {
     return NextResponse.json(
       {
         error: result.error ?? "Failed to roll back operation on InsForge",
