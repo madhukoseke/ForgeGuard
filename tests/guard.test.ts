@@ -64,4 +64,17 @@ test("operation parser rejects unknown operation types", () => {
   });
 
   assert.equal(parsed.ok, false);
+  assert.match(parsed.error ?? "", /data\.query/);
+});
+
+test("operation parser accepts data.query", () => {
+  const parsed = parseProposedOp({
+    operation_type: "data.query",
+    statement: "SELECT 1",
+    note: "health check",
+  });
+  assert.equal(parsed.ok, true);
+  if (parsed.ok) {
+    assert.equal(parsed.op.note, "health check");
+  }
 });

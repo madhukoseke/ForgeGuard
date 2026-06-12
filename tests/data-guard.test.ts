@@ -56,6 +56,16 @@ test("query returns rows and writes an audit row", async () => {
   assert.equal(rows[0].agent, "test-agent");
 });
 
+test("query records http transport when requested", async () => {
+  await guardDataQuery(
+    { sql: "SELECT * FROM users", transport: "http", agent: "curl" },
+    freshBackend(),
+  );
+  const rows = await getStore().list();
+  assert.equal(rows[0].transport, "http");
+  assert.equal(rows[0].agent, "curl");
+});
+
 test("query rejects mutations with guidance", async () => {
   const result = await guardDataQuery(
     { sql: "DELETE FROM users" },

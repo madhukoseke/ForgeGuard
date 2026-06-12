@@ -31,6 +31,7 @@
     "mcp": "tsx mcp/cli.ts",
     "build:mcp": "tsc -p tsconfig.mcp.json",
     "prepublishOnly": "npm run build:mcp",
+    "pack:check": "npm run build:mcp && npm pack --dry-run",
     "lint": "eslint app components hooks lib mcp tests scripts --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",

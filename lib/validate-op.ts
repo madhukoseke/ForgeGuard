@@ -1,15 +1,36 @@
-import { ActionType, OpContext, ProposedOp } from "./types";
+import { ActionType, OpContext, ProposedOp, Transport } from "./types";
 
-export const VALID_ACTION_TYPES: ActionType[] = [
+export const BACKEND_CHANGE_TYPES: ActionType[] = [
   "db.migration",
   "function.deploy",
   "storage.config",
   "auth.config",
 ];
 
+export const DATA_ACTION_TYPES: ActionType[] = ["data.query", "data.execute"];
+
+export const VALID_ACTION_TYPES: ActionType[] = [
+  ...BACKEND_CHANGE_TYPES,
+  ...DATA_ACTION_TYPES,
+];
+
 type ParseResult =
   | { ok: true; op: ProposedOp }
   | { ok: false; error: string };
+
+export type DataRequestParseResult =
+  | { ok: true; input: DataRequestFields }
+  | { ok: false; error: string };
+
+/** Fields shared by /api/guard/query, /api/guard/execute, and data.* ops on /api/guard/op. */
+export interface DataRequestFields {
+  sql: string;
+  agent?: string;
+  session_id?: string;
+  note?: string;
+  max_rows?: number;
+  transport?: Transport;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -26,6 +47,18 @@ function optionalString(
   const trimmed = value.trim();
   if (!trimmed) return undefined;
   return trimmed.slice(0, maxLength);
+}
+
+function optionalPositiveInt(
+  body: Record<string, unknown>,
+  key: string,
+): number | undefined {
+  const value = body[key];
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+  return Math.floor(value);
 }
 
 function parseContext(raw: unknown): { context?: OpContext; error?: string } {
@@ -77,22 +110,89 @@ function parseContext(raw: unknown): { context?: OpContext; error?: string } {
   return { context };
 }
 
+function parseSqlField(body: Record<string, unknown>): { sql?: string; error?: string } {
+  const sql =
+    typeof body.sql === "string" && body.sql.trim()
+      ? body.sql.trim()
+      : typeof body.statement === "string" && body.statement.trim()
+        ? body.statement.trim()
+        : undefined;
+  if (!sql) {
+    return { error: "`sql` (or `statement`) is required" };
+  }
+  if (sql.length > 100_000) {
+    return { error: "`sql` is too large" };
+  }
+  return { sql };
+}
+
+function parseDataFields(
+  body: Record<string, unknown>,
+  transport: Transport = "http",
+): DataRequestParseResult {
+  const { sql, error: sqlError } = parseSqlField(body);
+  if (sqlError || !sql) return { ok: false, error: sqlError ?? "`sql` is required" };
+
+  const max_rows = optionalPositiveInt(body, "max_rows");
+  if (body.max_rows !== undefined && max_rows === undefined) {
+    return { ok: false, error: "`max_rows` must be a positive integer" };
+  }
+
+  return {
+    ok: true,
+    input: {
+      sql,
+      agent: optionalString(body, "agent", 200),
+      session_id: optionalString(body, "session_id", 200),
+      note: optionalString(body, "note", 8_000),
+      max_rows,
+      transport,
+    },
+  };
+}
+
+/** Parse POST /api/guard/query or /api/guard/execute bodies. */
+export function parseDataRequest(body: unknown): DataRequestParseResult {
+  if (!isRecord(body)) return { ok: false, error: "JSON body must be an object" };
+  return parseDataFields(body, "http");
+}
+
+export function proposedOpToDataInput(op: ProposedOp): DataRequestFields {
+  return {
+    sql: op.statement,
+    agent: op.agent,
+    session_id: op.session_id,
+    note: op.note,
+    max_rows: op.max_rows,
+    transport: "http",
+  };
+}
+
+export function isDataActionType(type: ActionType): boolean {
+  return DATA_ACTION_TYPES.includes(type);
+}
+
 export function parseProposedOp(body: unknown): ParseResult {
   if (!isRecord(body)) return { ok: false, error: "JSON body must be an object" };
 
   if (!VALID_ACTION_TYPES.includes(body.operation_type as ActionType)) {
     return {
       ok: false,
-      error: "`operation_type` must be db.migration | function.deploy | storage.config | auth.config",
+      error:
+        "`operation_type` must be db.migration | function.deploy | storage.config | auth.config | data.query | data.execute",
     };
   }
 
-  if (typeof body.statement !== "string" || !body.statement.trim()) {
+  const operationType = body.operation_type as ActionType;
+
+  const { sql, error: sqlError } = parseSqlField(body);
+  if (sqlError || !sql) {
     return { ok: false, error: "`statement` is required" };
   }
 
-  if (body.statement.length > 100_000) {
-    return { ok: false, error: "`statement` is too large" };
+  const max_rows = optionalPositiveInt(body, "max_rows");
+  if (body.max_rows !== undefined && max_rows === undefined) {
+    return { ok: false, error: "`max_rows` must be a positive integer" };
   }
 
   const parsedContext = parseContext(body.context);
@@ -101,13 +201,15 @@ export function parseProposedOp(body: unknown): ParseResult {
   return {
     ok: true,
     op: {
-      operation_type: body.operation_type as ActionType,
-      statement: body.statement.trim(),
+      operation_type: operationType,
+      statement: sql,
       context: parsedContext.context,
       agent: optionalString(body, "agent", 200),
       session_id: optionalString(body, "session_id", 200),
       target: optionalString(body, "target", 500),
       diff: optionalString(body, "diff", 50_000),
+      note: optionalString(body, "note", 8_000),
+      max_rows,
     },
   };
 }

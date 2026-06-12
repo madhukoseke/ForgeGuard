@@ -193,6 +193,48 @@ async function main() {
     );
     console.log("✓ reject → rejected");
 
+    ({ res, body } = await req(baseUrl, "/api/guard/query", {
+      method: "POST",
+      body: JSON.stringify({ sql: "SELECT email FROM users" }),
+    }));
+    assert(res.status === 200, `guard/query expected 200, got ${res.status}`);
+    const query = body as {
+      status: string;
+      row_count: number;
+      transport: string;
+    };
+    assert(query.status === "applied", "guard/query should be applied");
+    assert(query.row_count === 5, "guard/query should return demo rows");
+    assert(query.transport === "http", "guard/query should tag http transport");
+    console.log("✓ guard/query applied (200)");
+
+    ({ res, body } = await req(baseUrl, "/api/guard/execute", {
+      method: "POST",
+      body: JSON.stringify({ sql: "DROP TABLE users;" }),
+    }));
+    assert(res.status === 202, `guard/execute expected 202, got ${res.status}`);
+    const dataExec = body as {
+      status: string;
+      requires_approval: boolean;
+      severity: string;
+    };
+    assert(dataExec.status === "pending", "guard/execute DROP should be pending");
+    assert(dataExec.requires_approval, "guard/execute should require approval");
+    assert(dataExec.severity === "critical", "guard/execute DROP should be critical");
+    console.log("✓ guard/execute pending (202)");
+
+    ({ res, body } = await req(baseUrl, "/api/guard/op", {
+      method: "POST",
+      body: JSON.stringify({
+        operation_type: "data.query",
+        statement: "SELECT email FROM users LIMIT 2",
+        max_rows: 2,
+      }),
+    }));
+    assert(res.status === 200, `data.query via /guard/op expected 200, got ${res.status}`);
+    assert((body as { row_count: number }).row_count === 2, "max_rows should cap results");
+    console.log("✓ data.query via /api/guard/op (200)");
+
     ({ res, body } = await req(baseUrl, "/api/demo", {
       method: "POST",
       body: JSON.stringify({ action: "seed_all" }),

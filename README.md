@@ -205,9 +205,43 @@ flowchart TD
 
 ## HTTP API reference
 
-The original chokepoint remains for agents that integrate over HTTP.
+Agents that do not use MCP can call the same guard pipeline over HTTP.
 
-### Submit a proposed operation
+### Read-only query (`data.query`)
+
+```bash
+curl -X POST http://localhost:3000/api/guard/query \
+  -H 'content-type: application/json' \
+  -d '{ "sql": "SELECT email FROM users", "max_rows": 50, "agent": "my-agent" }'
+```
+
+Returns `rows`, `row_count`, masking/redaction counts, and `injection_findings`. **200** on success, **400** when rejected (policy, injection, or non-read-only SQL).
+
+Equivalent via the unified chokepoint:
+
+```bash
+curl -X POST http://localhost:3000/api/guard/op \
+  -H 'content-type: application/json' \
+  -d '{ "operation_type": "data.query", "statement": "SELECT email FROM users" }'
+```
+
+### Write / DDL (`data.execute`)
+
+```bash
+curl -X POST http://localhost:3000/api/guard/execute \
+  -H 'content-type: application/json' \
+  -d '{ "sql": "ALTER TABLE users ADD COLUMN nickname text;", "note": "profile field" }'
+```
+
+| HTTP | Meaning |
+|------|---------|
+| **200** | Auto-allowed and applied |
+| **202** | Pending — includes `rationale`, `safer_alternative`, `requires_approval` |
+| **400** | Rejected (policy, injection, or execution error) |
+
+Also accepted on `POST /api/guard/op` with `"operation_type": "data.execute"`.
+
+### Backend-change ops (`db.migration`, etc.)
 
 ```bash
 curl -X POST http://localhost:3000/api/guard/op \
@@ -345,7 +379,9 @@ lib/
 
 app/
   dashboard/page.tsx        Operator UI (Requests + Injection filters)
-  api/guard/op/             HTTP chokepoint
+  api/guard/op/             HTTP chokepoint (backend ops + data.query/execute)
+  api/guard/query/          Read-only data.query
+  api/guard/execute/        Write/DDL data.execute
   api/actions/              Audit log + review
   api/demo/                 Demo seed / reset
 

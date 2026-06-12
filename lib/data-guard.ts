@@ -27,6 +27,7 @@ import {
   AgentAction,
   InjectionFinding,
   Severity,
+  Transport,
   Verdict,
   computeRequiresApproval,
   maxSeverity,
@@ -42,6 +43,8 @@ export interface DataRequestInput {
   note?: string;
   /** Per-call row cap; clamped to the policy max. */
   max_rows?: number;
+  /** How the request reached ForgeGuard. Defaults to "mcp". */
+  transport?: Transport;
 }
 
 export interface DataQueryResult {
@@ -86,7 +89,9 @@ function baseAction(
   return {
     id: randomUUID(),
     created_at: new Date().toISOString(),
-    agent: input.agent ?? "mcp-agent",
+    agent:
+      input.agent ??
+      (input.transport === "http" ? "http-agent" : "mcp-agent"),
     session_id: input.session_id ?? null,
     action_type: actionType,
     target: referencedTables(input.sql).join(", ") || null,
@@ -108,7 +113,7 @@ function baseAction(
     pr_urls: null,
     preview_url: null,
     injection_findings: null,
-    transport: "mcp",
+    transport: input.transport ?? "mcp",
   };
 }
 

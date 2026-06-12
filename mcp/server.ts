@@ -104,6 +104,7 @@ export function buildForgeGuardServer(
         note,
         agent,
         session_id: extra?.sessionId,
+        transport: "mcp",
       });
       return json(result);
     },
@@ -132,6 +133,7 @@ export function buildForgeGuardServer(
         note,
         agent,
         session_id: extra?.sessionId,
+        transport: "mcp",
       });
       return json(result);
     },

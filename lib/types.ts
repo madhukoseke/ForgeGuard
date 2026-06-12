@@ -56,6 +56,10 @@ export interface ProposedOp {
   session_id?: string;
   target?: string;
   diff?: string;
+  /** Free-text context for data.query / data.execute (injection-scanned). */
+  note?: string;
+  /** Per-call row cap for data.query (clamped to policy max). */
+  max_rows?: number;
 }
 
 // The structured judgment produced by Layer 1 + Layer 2.

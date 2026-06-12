@@ -1,12 +1,26 @@
 // The chokepoint. Agents POST proposed backend ops here instead of applying
 // directly. ForgeGuard classifies (Layer 1 + Layer 2), writes the audit row,
 // and either auto-allows or pauses for human approval.
+//
+// Also accepts data.query and data.execute operation types, routed through the
+// same guard pipeline as the MCP server and /api/guard/query|execute.
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireOperatorToken } from "@/lib/api-auth";
+import { guardDataExecute, guardDataQuery } from "@/lib/data-guard";
 import { guardOp } from "@/lib/guard";
+import {
+  executeHttpBody,
+  executeHttpStatus,
+  queryHttpBody,
+  queryHttpStatus,
+} from "@/lib/guard-data-http";
 import { getExecutorMode } from "@/lib/insforge-client";
-import { parseProposedOp } from "@/lib/validate-op";
+import {
+  isDataActionType,
+  parseProposedOp,
+  proposedOpToDataInput,
+} from "@/lib/validate-op";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +38,20 @@ export async function POST(req: NextRequest) {
   const parsed = parseProposedOp(body);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  if (isDataActionType(parsed.op.operation_type)) {
+    const input = proposedOpToDataInput(parsed.op);
+    if (parsed.op.operation_type === "data.query") {
+      const result = await guardDataQuery(input);
+      return NextResponse.json(queryHttpBody(result), {
+        status: queryHttpStatus(result),
+      });
+    }
+    const result = await guardDataExecute(input);
+    return NextResponse.json(executeHttpBody(result), {
+      status: executeHttpStatus(result),
+    });
   }
 
   const { action, verdict, status, applied, apply_error } = await guardOp(parsed.op);
@@ -53,6 +81,7 @@ export async function POST(req: NextRequest) {
       branch: action.branch,
       executor,
       apply_error,
+      transport: "http",
       message: verdict.requires_approval
         ? "PAUSED — ForgeGuard requires human approval before this op can apply."
         : autoMessage,
