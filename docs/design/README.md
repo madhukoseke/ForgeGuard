@@ -1,5 +1,7 @@
 # Design reference prototypes
 
+> **Warning:** Code in this folder is **not maintained** for production use. Dependencies are stale and UX may not match the shipped app. Use the [root dashboard](/dashboard) and [docs/STABLE_0.3.0.md](../STABLE_0.3.0.md) instead.
+
 This folder holds **UI reference implementations** for ForgeGuard. They are not part of the production app and are excluded from the root TypeScript build (`tsconfig.json`).
 
 ## Contents

@@ -13,6 +13,7 @@ Agents connect to ForgeGuard as their database tool (MCP). Every query and every
 ## Contents
 
 - [What it does](#what-it-does)
+- [What is stable in 0.3.0](#what-is-stable-in-030)
 - [Architecture](#architecture)
 - [Quick start: MCP server](#quick-start-mcp-server)
 - [Quick start: dashboard](#quick-start-dashboard)
@@ -26,6 +27,7 @@ Agents connect to ForgeGuard as their database tool (MCP). Every query and every
 - [For coding agents](#for-coding-agents)
 - [Integrations](#integrations)
 - [Development](#development)
+- [Documentation](#documentation)
 - [Project layout](#project-layout)
 
 ---
@@ -43,6 +45,18 @@ Agents connect to ForgeGuard as their database tool (MCP). Every query and every
 
 **Backends:** any Postgres (`DATABASE_URL`) · [InsForge](https://insforge.dev) · in-memory simulation (zero-credential demo)
 **Op types:** `data.query` · `data.execute` · `db.migration` · `function.deploy` · `storage.config` · `auth.config`
+
+---
+
+## What is stable in 0.3.0
+
+**Stable:** MCP tools, HTTP guard/actions routes, `forgeguard.config.json`, env configuration, `forgeguard-mcp` npm bin, deterministic guard pipeline, memory/postgres/insforge audit stores.
+
+**Experimental:** InsForge live executor, Replicas/Limrun/Memoir integrations, LLM injection scan, design prototypes under `docs/design/`.
+
+Details: [docs/STABLE_0.3.0.md](./docs/STABLE_0.3.0.md) · Threat model: [docs/THREAT_MODEL.md](./docs/THREAT_MODEL.md)
+
+The npm package is **CLI-first**; internal `dist/lib/*` is not a supported public library API until v1.
 
 ---
 
@@ -356,6 +370,23 @@ npm run precommit        # typecheck + lint + test + build
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) and [SECURITY.md](./SECURITY.md).
+
+---
+
+## Documentation
+
+| Doc | Description |
+|-----|-------------|
+| [STABLE_0.3.0.md](./docs/STABLE_0.3.0.md) | Stable vs experimental surfaces |
+| [THREAT_MODEL.md](./docs/THREAT_MODEL.md) | Limitations and security expectations |
+| [MCP_SETUP.md](./docs/MCP_SETUP.md) | Claude Desktop, Cursor, HTTP transport |
+| [POSTGRES_QUICKSTART.md](./docs/POSTGRES_QUICKSTART.md) | Local Postgres + Docker |
+| [INSFORGE_QUICKSTART.md](./docs/INSFORGE_QUICKSTART.md) | Bootstrap and integration test |
+| [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Common issues |
+| [ADMIN_TOKEN.md](./docs/ADMIN_TOKEN.md) | Operator token model |
+| [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Production deployment |
+| [API_STABILITY.md](./docs/API_STABILITY.md) | HTTP/MCP stability policy |
+| [RELEASE_CHECKLIST.md](./docs/RELEASE_CHECKLIST.md) | Maintainer release steps |
 
 ---
 

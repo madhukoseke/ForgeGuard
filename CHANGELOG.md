@@ -29,24 +29,42 @@ Each guarded operation that reaches `applied` status should appear here with:
 
 ---
 
-## Unreleased
+## [0.3.0] — 2026-06-13
 
-### Demo & dashboard
+### Added
 
-- **Cinematic demo** — **Run demo** (`D`) now covers all 6 scenes from [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md): block → approve → rollback → auto-allow → reject.
-- **`npm run demo:e2e`** — headless verification of the full cinematic flow; included in CI.
-- **README** — "Try the demo" section, corrected project layout, design prototypes under `docs/design/`.
-- **Distribution recording** — follow [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md) to capture MP4/GIF; add to `docs/assets/` and link from README when ready.
+- **Data guard MCP tools** — `data.query` and `data.execute` with policy, injection scanning, and audit trail
+- **HTTP data routes** — `/api/guard/query` and `/api/guard/execute` mirror MCP behavior
+- **Prompt-injection defense** — bidirectional scanning with optional LLM layer (`FORGEGUARD_INJECTION_LLM`)
+- **Cinematic demo** — **Run demo** (`D`) covers 6 scenes; `npm run demo:e2e` in CI
+- **Replicas webhook** — `POST /api/webhooks/replicas` enriches audit rows with `replica_id` and `pr_urls`
+- **Limrun mobile preview** — signed stream URL for pending medium+ ops when configured
+- **Open-source readiness** — community files, docs, CI hardening, schema drift tests, npm packaging
+- **Next.js 16** — upgraded with clean production dependency audit
 
-### Multi-platform integration
+### Changed
 
-- **InsForge executor** — Real apply/rollback via admin REST when `FORGEGUARD_EXECUTOR=insforge`; simulated by default for offline demo.
-- **Replicas webhook** — `POST /api/webhooks/replicas` enriches audit rows with `replica_id` and `pr_urls`.
-- **Limrun mobile preview** — Pending high/medium+ ops get a signed stream URL when `LIM_API_KEY` or `LIMRUN_INSTANCE_ID` is set.
+- **InsForge bootstrap** — loads canonical [`sql/schema.sql`](./sql/schema.sql) (supports `data.query`, `data.execute`, `injection_findings`, `transport`)
+- **InsForge executor** — real apply/rollback via admin REST when `FORGEGUARD_EXECUTOR=insforge`; simulated by default
+
+### Security
+
+- Operator token required in production; timing-safe token comparison
+- Security headers: CSP, HSTS, Permissions-Policy
+- Rate limiting on guard mutations and demo POST
+- Advisory `/api/readiness` endpoint for deployment checks
 
 #forgeguard-approved Safe migrations auto-apply through the guard pipeline with compensating rollback snapshots stored in the audit trail.
 
 #forgeguard-blocked Destructive ops (DROP TABLE, unconditional DELETE, RLS disable) pause at `pending` with rationale and safer alternatives surfaced to the operator.
+
+---
+
+## Unreleased
+
+### Distribution recording
+
+- Follow [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md) to capture MP4/GIF; add to `docs/assets/` and link from README when ready.
 
 ---
 

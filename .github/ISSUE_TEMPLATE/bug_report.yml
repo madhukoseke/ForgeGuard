@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting. Please do **not** include secrets, `.env.local` contents, or API keys.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug and expected behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. npm run dev
+        2. POST /api/guard/query ...
+        3. See error
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: ForgeGuard version
+      placeholder: "0.3.0 or commit hash"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: store
+    attributes:
+      label: Store backend
+      options:
+        - memory (demo)
+        - postgres
+        - insforge
+        - not sure
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: "node -v output"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output
+      render: shell

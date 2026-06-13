@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireOperatorToken } from "@/lib/api-auth";
+import { enforceRateLimit } from "@/lib/rate-limit-http";
 import { guardDataExecute, guardDataQuery } from "@/lib/data-guard";
 import { guardOp } from "@/lib/guard";
 import {
@@ -25,6 +26,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  const limited = enforceRateLimit(req);
+  if (limited) return limited;
+
   const unauthorized = requireOperatorToken(req);
   if (unauthorized) return unauthorized;
 

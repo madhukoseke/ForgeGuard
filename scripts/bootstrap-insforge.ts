@@ -1,14 +1,19 @@
 /**
  * Bootstrap ForgeGuard schema on a linked InsForge project.
+ * Loads canonical SQL from sql/schema.sql.
  * Usage: npm run bootstrap:insforge
  */
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   getInsForgeConfig,
   InsForgeClient,
   migrationVersion,
 } from "../lib/insforge-client";
+import {
+  getBootstrapMigrations,
+  MIGRATION_NAMES,
+} from "../lib/schema-sql";
 
 interface ProjectJson {
   oss_host?: string;
@@ -32,58 +37,6 @@ function loadClient(): InsForgeClient {
   }
   return new InsForgeClient({ url: project.oss_host, key: project.api_key });
 }
-
-const AGENT_ACTIONS_SQL = `
-create table if not exists agent_actions (
-  id                uuid primary key default gen_random_uuid(),
-  created_at        timestamptz not null default now(),
-  agent             text not null,
-  session_id        text,
-  action_type       text not null check (action_type in ('db.migration', 'function.deploy', 'storage.config', 'auth.config')),
-  target            text,
-  statement         text not null,
-  diff              text,
-  severity          text not null check (severity in ('safe', 'low', 'medium', 'high', 'critical')),
-  category          text not null check (category in ('destructive', 'data_loss', 'security', 'cost', 'migration_risk', 'benign')),
-  rationale         text,
-  blast_radius      text,
-  requires_approval boolean not null default false,
-  status            text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'applied', 'rolled_back', 'auto_allowed')),
-  reviewed_by       text,
-  reviewed_at       timestamptz,
-  safer_alternative text,
-  branch            text,
-  rollback_ref      text,
-  source            text not null default 'deterministic' check (source in ('deterministic', 'llm')),
-  replica_id        text,
-  pr_urls           jsonb,
-  preview_url       text,
-  applied_safer     boolean not null default false
-);
-
-create index if not exists agent_actions_created_at_idx on agent_actions (created_at desc);
-create index if not exists agent_actions_status_idx on agent_actions (status);
-create index if not exists agent_actions_severity_idx on agent_actions (severity);
-create index if not exists agent_actions_session_id_idx on agent_actions (session_id);
-create index if not exists agent_actions_replica_id_idx on agent_actions (replica_id);
-`.trim();
-
-const USERS_DEMO_SQL = `
-create table if not exists users (
-  id          uuid primary key default gen_random_uuid(),
-  email       text not null unique,
-  created_at  timestamptz not null default now(),
-  last_login  timestamptz
-);
-
-insert into users (email, last_login) values
-  ('ada@example.com',    now() - interval '1 day'),
-  ('grace@example.com',  now() - interval '2 days'),
-  ('linus@example.com',  now() - interval '3 days'),
-  ('margaret@example.com', now() - interval '4 days'),
-  ('alan@example.com',   now() - interval '5 days')
-on conflict (email) do nothing;
-`.trim();
 
 function nextMigrationVersion(existing: { version: string }[]): string {
   const numeric = existing
@@ -114,15 +67,9 @@ async function ensureMigration(
   console.log(`✓ applied migration "${name}" (${version})`);
 }
 
-const ENRICHMENT_COLUMNS_SQL = `
-alter table agent_actions add column if not exists replica_id text;
-alter table agent_actions add column if not exists pr_urls jsonb;
-alter table agent_actions add column if not exists preview_url text;
-alter table agent_actions add column if not exists applied_safer boolean not null default false;
-`.trim();
-
 async function main() {
   const client = loadClient();
+  const migrations = getBootstrapMigrations();
   console.log(`Bootstrapping ForgeGuard on ${client.url}`);
 
   if (!(await client.healthCheck())) {
@@ -130,14 +77,23 @@ async function main() {
   }
   console.log("✓ InsForge health OK");
 
-  await ensureMigration(client, "forgeguard-agent-actions", AGENT_ACTIONS_SQL);
   await ensureMigration(
     client,
-    "forgeguard-agent-actions-enrichment",
-    ENRICHMENT_COLUMNS_SQL,
+    MIGRATION_NAMES.agentActions,
+    migrations[MIGRATION_NAMES.agentActions],
+  );
+  await ensureMigration(
+    client,
+    MIGRATION_NAMES.agentActionsUpgrade,
+    migrations[MIGRATION_NAMES.agentActionsUpgrade],
     500,
   );
-  await ensureMigration(client, "forgeguard-users-demo", USERS_DEMO_SQL, 500);
+  await ensureMigration(
+    client,
+    MIGRATION_NAMES.usersDemo,
+    migrations[MIGRATION_NAMES.usersDemo],
+    500,
+  );
 
   const rows = await client.queryRecords<{ id: string }>("agent_actions", "?limit=1");
   console.log(`✓ agent_actions table reachable (${rows.length} row sample)`);

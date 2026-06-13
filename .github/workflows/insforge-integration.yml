@@ -1,0 +1,21 @@
+name: InsForge integration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.INSFORGE_URL != '' && secrets.INSFORGE_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Integration test
+        run: npm run integration:insforge
+        env:
+          INSFORGE_URL: ${{ secrets.INSFORGE_URL }}
+          INSFORGE_KEY: ${{ secrets.INSFORGE_KEY }}

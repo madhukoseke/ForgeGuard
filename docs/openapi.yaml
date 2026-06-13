@@ -1,0 +1,76 @@
+openapi: 3.1.0
+info:
+  title: ForgeGuard HTTP API
+  version: 0.3.0
+  description: Guard chokepoint and audit trail (operator token required in production).
+
+paths:
+  /api/guard/query:
+    post:
+      summary: Read-only data.query
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sql]
+              properties:
+                sql: { type: string }
+                agent: { type: string }
+                session_id: { type: string }
+                max_rows: { type: integer }
+      responses:
+        "200":
+          description: Query result or guard hold
+
+  /api/guard/execute:
+    post:
+      summary: Write/DDL data.execute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sql]
+              properties:
+                sql: { type: string }
+      responses:
+        "200":
+          description: Applied, pending, or blocked
+
+  /api/guard/op:
+    post:
+      summary: Backend operation chokepoint
+      responses:
+        "200":
+          description: Classification result
+
+  /api/actions:
+    get:
+      summary: List audit actions (paginated)
+    parameters:
+      - name: limit
+        in: query
+        schema: { type: integer }
+      - name: offset
+        in: query
+        schema: { type: integer }
+
+  /api/actions/{id}:
+    patch:
+      summary: approve | reject | rollback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+
+  /api/health:
+    get:
+      summary: Integration status (public)
+
+  /api/readiness:
+    get:
+      summary: Deployment advisory warnings (public)

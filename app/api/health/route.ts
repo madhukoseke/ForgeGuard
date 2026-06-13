@@ -10,7 +10,12 @@ import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  if (url.searchParams.get("minimal") === "1") {
+    return NextResponse.json({ ok: true });
+  }
+
   const storeBackend = (
     process.env.FORGEGUARD_STORE || "memory"
   ).toLowerCase();

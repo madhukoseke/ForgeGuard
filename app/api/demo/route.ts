@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireOperatorToken } from "@/lib/api-auth";
+import { enforceRateLimit } from "@/lib/rate-limit-http";
 import { DEMO_OPS } from "@/lib/demo-ops";
 import { guardOp } from "@/lib/guard";
 import { getStore } from "@/lib/store";
@@ -16,6 +17,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = enforceRateLimit(req);
+  if (limited) return limited;
+
   const unauthorized = requireOperatorToken(req);
   if (unauthorized) return unauthorized;
 

@@ -6,6 +6,7 @@ import { getDataBackend } from "@/lib/backends";
 import { applyDataAction, rollbackDataAction } from "@/lib/data-guard";
 import { applyOp, rollbackOp, getExecutorMode, executorIsLive } from "@/lib/insforge-executor";
 import { emitMemoirAppliedEvent } from "@/lib/memoir-events";
+import { enforceRateLimit } from "@/lib/rate-limit-http";
 import { resolveSaferStatement } from "@/lib/safer-sql";
 import { getStore } from "@/lib/store";
 import { ActionStatus, AgentAction } from "@/lib/types";
@@ -23,6 +24,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const limited = enforceRateLimit(req);
+  if (limited) return limited;
+
   const unauthorized = requireOperatorToken(req);
   if (unauthorized) return unauthorized;
 

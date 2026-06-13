@@ -3,6 +3,20 @@
   "version": "0.3.0",
   "description": "Open-source guardrail layer between AI agents and your data: MCP server with audit trail, prompt-injection scanning, and destructive-query detection.",
   "license": "Apache-2.0",
+  "author": "Madhukoseke",
+  "keywords": [
+    "mcp",
+    "postgres",
+    "guardrails",
+    "ai-agents",
+    "database",
+    "security",
+    "audit",
+    "insforge"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "forgeguard-mcp": "dist/mcp/cli.js"
   },
@@ -29,7 +43,7 @@
     "build": "next build",
     "start": "next start",
     "mcp": "tsx mcp/cli.ts",
-    "build:mcp": "tsc -p tsconfig.mcp.json",
+    "build:mcp": "tsc -p tsconfig.mcp.json && chmod +x dist/mcp/cli.js",
     "prepublishOnly": "npm run build:mcp",
     "pack:check": "npm run build:mcp && npm pack --dry-run",
     "lint": "eslint app components hooks lib mcp tests scripts --max-warnings=0",
@@ -45,26 +59,32 @@
     "bootstrap:insforge": "tsx --env-file=.env.local scripts/bootstrap-insforge.ts",
     "integration:insforge": "tsx --env-file=.env.local scripts/insforge-integration.ts",
     "verify:limrun": "tsx --env-file=.env.local scripts/verify-limrun.ts",
-    "precommit": "npm run typecheck && npm run lint && npm test && npm run build"
+    "precommit": "npm run typecheck && npm run lint && npm test && npm run build",
+    "test:coverage": "node --import tsx --experimental-test-coverage --test-coverage-include='lib/{guard,classifier,injection,data-guard,policy}.ts' --test tests/*.test.ts",
+    "licenses:scan": "npx --yes license-checker --production --summary"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "geist": "^1.7.2",
-    "next": "15.5.18",
+    "next": "^16.2.9",
     "pg": "^8.21.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "zod": "^3.25.76"
   },
+  "overrides": {
+    "postcss": "8.5.15"
+  },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@types/node": "20.14.10",
     "@types/pg": "^8.20.0",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "autoprefixer": "^10.5.0",
-    "eslint": "8.57.1",
-    "eslint-config-next": "15.5.18",
-    "postcss": "^8.5.10",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.9",
+    "postcss": "8.5.15",
     "tailwindcss": "^3.4.19",
     "tsx": "4.22.4",
     "typescript": "5.5.3"

@@ -1,0 +1,35 @@
+name: Postgres smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  mcp-query:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fg
+          POSTGRES_PASSWORD: fg
+          POSTGRES_DB: fg
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fg"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:mcp
+      - name: MCP help smoke
+        run: node dist/mcp/cli.js --help

@@ -1,3 +1,7 @@
+# ForgeGuard (design prototype — not maintained)
+
+> **Warning:** This standalone Next.js app is a **historical design reference only**. It is not updated with the production ForgeGuard app, uses stale dependencies, and must not be used in production. See the [root README](../../../../README.md) and [docs/STABLE_0.3.0.md](../../../STABLE_0.3.0.md).
+
 # ForgeGuard
 
 **The reliability & observability control plane for AI-agent-built backends on InsForge.**
