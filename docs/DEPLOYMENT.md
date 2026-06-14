@@ -56,7 +56,34 @@ See [POSTGRES_QUICKSTART.md](./POSTGRES_QUICKSTART.md) for role setup. Never use
 
 ## Memory fallback (current behavior)
 
-If credentials for the configured store are missing, ForgeGuard falls back to memory with a console warning. Check `/api/readiness` in production. Hard-fail on misconfiguration may be added in a future release.
+If credentials for the configured store are missing, ForgeGuard falls back to memory with a console warning. Check `/api/readiness` in production.
+
+## Strict production config
+
+Set `FORGEGUARD_STRICT_CONFIG=1` in production so `/api/readiness` returns **503** when:
+
+- `FORGEGUARD_OPERATOR_TOKEN` is missing
+- `FORGEGUARD_STORE=memory`
+- Postgres/InsForge store is configured without credentials
+- Replicas is enabled without `REPLICAS_WEBHOOK_SECRET`
+
+Wire your load balancer or uptime monitor to fail when readiness is not `ready: true`.
+
+## Edge rate limiting (multi-instance)
+
+In-memory rate limits apply per serverless instance. For global limits, terminate TLS at a proxy and apply limits there:
+
+**nginx** (example):
+
+```nginx
+limit_req_zone $binary_remote_addr zone=fg:10m rate=30r/m;
+location /api/guard/ {
+  limit_req zone=fg burst=20 nodelay;
+  proxy_pass http://forgeguard_upstream;
+}
+```
+
+**Cloudflare:** use WAF rate limiting rules on `/api/guard/*` and `/api/actions/*`.
 
 ## Observability
 

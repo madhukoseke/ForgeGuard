@@ -5,3 +5,9 @@ export function isProduction(): boolean {
     process.env.VERCEL === "1"
   );
 }
+
+/** When set, /api/readiness returns 503 if production config is unsafe. */
+export function isStrictConfig(): boolean {
+  const v = process.env.FORGEGUARD_STRICT_CONFIG?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}

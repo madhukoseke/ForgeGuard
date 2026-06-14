@@ -59,6 +59,8 @@
     "bootstrap:insforge": "tsx --env-file=.env.local scripts/bootstrap-insforge.ts",
     "integration:insforge": "tsx --env-file=.env.local scripts/insforge-integration.ts",
     "verify:limrun": "tsx --env-file=.env.local scripts/verify-limrun.ts",
+    "clean:local": "bash scripts/clean-local.sh",
+    "capture:screenshots": "tsx scripts/capture-screenshots.ts",
     "precommit": "npm run typecheck && npm run lint && npm test && npm run build",
     "test:coverage": "node --import tsx --experimental-test-coverage --test-coverage-include='lib/{guard,classifier,injection,data-guard,policy}.ts' --test tests/*.test.ts",
     "licenses:scan": "npx --yes license-checker --production --summary"
@@ -84,6 +86,7 @@
     "autoprefixer": "^10.5.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.9",
+    "playwright": "^1.60.0",
     "postcss": "8.5.15",
     "tailwindcss": "^3.4.19",
     "tsx": "4.22.4",

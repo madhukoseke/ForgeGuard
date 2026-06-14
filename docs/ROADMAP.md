@@ -2,10 +2,10 @@
 
 ## Core (near term)
 
-- [ ] Hard-fail production misconfiguration (optional env flag)
+- [x] Hard-fail production misconfiguration (`FORGEGUARD_STRICT_CONFIG` + `/api/readiness` 503)
 - [ ] Explicit npm `exports` map for supported library surface (v1)
-- [ ] Demo GIF/MP4 in `docs/assets/`
-- [ ] Dashboard screenshots for README
+- [ ] Demo GIF/MP4 in `docs/assets/` (record per DEMO_SCRIPT.md)
+- [x] Dashboard screenshot script (`npm run capture:screenshots`)
 
 ## Partner integrations
 
@@ -15,8 +15,8 @@
 
 ## Infrastructure
 
-- [ ] Global rate limiting guidance (edge proxy recipes)
-- [ ] Live InsForge CI on schedule with repo secrets
+- [x] Global rate limiting guidance (edge proxy recipes in DEPLOYMENT.md)
+- [x] Live InsForge CI weekly schedule (with repo secrets)
 - [ ] OpenTelemetry hooks
 
 See [OPEN_SOURCE_READINESS_CHECKLIST.md](./OPEN_SOURCE_READINESS_CHECKLIST.md) for launch tracking.

@@ -1,5 +1,10 @@
 # ForgeGuard
 
+[![CI](https://github.com/madhukoseke/ForgeGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/madhukoseke/ForgeGuard/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/madhukoseke/ForgeGuard)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/forgeguard?label=npm)](https://www.npmjs.com/package/forgeguard)
+[![Node](https://img.shields.io/node/v/forgeguard)](https://www.npmjs.com/package/forgeguard)
+
 **The open-source guardrail layer between AI agents and your data.**
 
 > An AI agent can ship a full-stack app in minutes — and drop your production table in seconds. **ForgeGuard is the seatbelt.**
@@ -139,6 +144,10 @@ npm run dev
 
 Filter chips include **Requests** (MCP `data.*` traffic) and **Injection** (actions with injection findings). Headless verification: `npm run demo:e2e`.
 
+![Dashboard with pending approvals](./docs/assets/screenshot-pending.png)
+
+Capture fresh screenshots: `npm run dev` then `npm run capture:screenshots`.
+
 ---
 
 ## MCP tools
@@ -161,6 +170,8 @@ Example `execute` response for `DROP TABLE users;`:
   "requires_approval": true
 }
 ```
+
+More examples (policy denied, injection blocked, applied, rollback): [docs/examples/MCP_RESPONSES.md](./docs/examples/MCP_RESPONSES.md).
 
 ---
 
@@ -386,6 +397,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) and [SECURITY.md](./SECURITY.md).
 | [ADMIN_TOKEN.md](./docs/ADMIN_TOKEN.md) | Operator token model |
 | [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Production deployment |
 | [API_STABILITY.md](./docs/API_STABILITY.md) | HTTP/MCP stability policy |
+| [examples/MCP_RESPONSES.md](./docs/examples/MCP_RESPONSES.md) | Sample guard responses |
 | [RELEASE_CHECKLIST.md](./docs/RELEASE_CHECKLIST.md) | Maintainer release steps |
 
 ---

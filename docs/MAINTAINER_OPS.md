@@ -2,6 +2,8 @@
 
 ## GitHub settings (before public launch)
 
+Run `bash scripts/setup-github.sh` (requires `gh auth login`), then:
+
 - [ ] Enable **Private vulnerability reporting** (Settings → Security)
 - [ ] Protect `main`: require PR, require status checks (`CI`, `Secret scan`)
 - [ ] Require at least one approving review

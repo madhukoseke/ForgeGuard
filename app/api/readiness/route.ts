@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { getExecutorMode, getInsForgeConfig } from "@/lib/insforge-client";
-import { isProduction } from "@/lib/production";
+import { isProduction, isStrictConfig } from "@/lib/production";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+function collectWarnings(): string[] {
   const warnings: string[] = [];
   const store = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();
-  const backend = (process.env.FORGEGUARD_BACKEND || "memory").toLowerCase();
 
   if (isProduction() && !process.env.FORGEGUARD_OPERATOR_TOKEN?.trim()) {
     warnings.push("FORGEGUARD_OPERATOR_TOKEN is not set");
@@ -27,13 +26,28 @@ export async function GET() {
   ) {
     warnings.push("Replicas enabled but REPLICAS_WEBHOOK_SECRET is missing");
   }
+  return warnings;
+}
 
-  return NextResponse.json({
-    ready: warnings.length === 0,
+export async function GET() {
+  const warnings = collectWarnings();
+  const store = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();
+  const backend = (process.env.FORGEGUARD_BACKEND || "memory").toLowerCase();
+  const ready = warnings.length === 0;
+
+  const body = {
+    ready,
     warnings,
     store,
     backend,
     executor: getExecutorMode(),
     production: isProduction(),
-  });
+    strict: isStrictConfig(),
+  };
+
+  if (isStrictConfig() && isProduction() && !ready) {
+    return NextResponse.json(body, { status: 503 });
+  }
+
+  return NextResponse.json(body);
 }
