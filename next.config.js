@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const path = require("node:path");
+
 const isProd =
   process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
 
@@ -40,6 +42,10 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   serverExternalPackages: ["pg"],
+  // Pin workspace root so Turbopack does not infer a parent lockfile directory.
+  turbopack: {
+    root: path.join(__dirname),
+  },
   async headers() {
     return [
       {
