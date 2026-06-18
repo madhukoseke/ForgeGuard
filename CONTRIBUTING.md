@@ -14,6 +14,8 @@ npm run precommit    # typecheck + lint + test + build (run before opening a PR)
 
 Optional live InsForge: copy `.env.example` to `.env.local`, link a project with the InsForge CLI, then `npm run bootstrap:insforge`.
 
+If `npm run dev` mis-detects the workspace or caches look stale, see [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md).
+
 ## Pull requests
 
 1. Fork the repo and create a feature branch from `main`.

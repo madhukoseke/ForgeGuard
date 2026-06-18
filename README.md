@@ -321,6 +321,7 @@ Copy `.env.example` → `.env.local`. All variables are optional for the local d
 | `INSFORGE_MODEL_GATEWAY_URL` | Model gateway base (default: OpenRouter) |
 | `FORGEGUARD_MODEL` | Model id for classifier |
 | `FORGEGUARD_OPERATOR_TOKEN` | Protect API routes (required in production) |
+| `FORGEGUARD_STRICT_CONFIG` | `1` in production: `/api/readiness` returns 503 when config is unsafe |
 | `FORGEGUARD_BASE_URL` | Target URL for `seed` / E2E scripts |
 | `REPLICAS_WEBHOOK_SECRET` | Verify Replicas webhook signatures |
 | `LIM_API_KEY` / `LIMRUN_INSTANCE_ID` | Limrun mobile preview for pending ops |
@@ -371,16 +372,21 @@ vercel link && vercel --prod
 
 ## Development
 
+Requires **Node.js 20+** (`package.json` `engines`).
+
 ```bash
+npm install
+npm run dev              # dashboard at http://localhost:3000/dashboard
 npm test                 # unit tests
 npm run mcp              # MCP server on stdio
 npm run build:mcp        # compile MCP server to dist/
 npm run e2e              # guard API E2E
 npm run demo:e2e         # cinematic demo E2E
+npm run clean:local      # remove .next, dist, and other local build artifacts
 npm run precommit        # typecheck + lint + test + build
 ```
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) and [SECURITY.md](./SECURITY.md).
+See [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) if `npm run dev` mis-detects the workspace root or caches look stale.
 
 ---
 

@@ -1,5 +1,32 @@
 # Troubleshooting
 
+## `npm run dev` picks the wrong workspace root
+
+**Symptom:** Next.js / Turbopack warns about multiple lockfiles, serves the wrong app, or fails to resolve modules after cloning into a parent directory that also has a `package-lock.json`.
+
+**Fix:** ForgeGuard pins Turbopack's root in [`next.config.js`](../next.config.js). Pull the latest `main`. If issues persist:
+
+```bash
+npm run clean:local
+rm -rf node_modules && npm install
+npm run dev
+```
+
+Clone into its own directory (not nested under another Node monorepo) when possible.
+
+## Stale local build artifacts
+
+**Symptom:** Type errors, missing routes, or dashboard changes that do not appear after `git pull`.
+
+**Fix:**
+
+```bash
+npm run clean:local
+npm run dev
+```
+
+`.env.local` and `.insforge/` are not removed.
+
 ## Missing `DATABASE_URL`
 
 **Symptom:** MCP or dashboard falls back to memory; log shows `falling back to memory backend`.
