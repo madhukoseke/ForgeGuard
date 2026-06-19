@@ -15,7 +15,7 @@
 3. **`DATABASE_URL`** — when using postgres backend/store
 4. **`REPLICAS_WEBHOOK_SECRET`** — if Replicas webhook is enabled
 5. **Bootstrap InsForge** — `npm run bootstrap:insforge` before `FORGEGUARD_STORE=insforge`
-6. **Readiness check** — `GET /api/readiness` should show no critical warnings
+6. **Readiness check** — `GET /api/readiness` should show `ready: true`; set **`FORGEGUARD_STRICT_CONFIG=1`** in production to return **503** when misconfigured
 
 ## Vercel
 
@@ -26,6 +26,26 @@ vercel --prod
 ```
 
 Set all variables from `.env.example`. Use **Production** environment for secrets.
+
+## Docker
+
+Root [`docker-compose.yml`](../docker-compose.yml) runs Postgres 16 and the ForgeGuard app image built from the root [`Dockerfile`](../Dockerfile).
+
+```bash
+# Postgres only (develop with npm run dev on the host)
+docker compose up postgres -d
+
+# Full stack
+FORGEGUARD_OPERATOR_TOKEN=<strong-secret> docker compose up --build -d
+```
+
+Connection string for the bundled Postgres service:
+
+```
+postgres://forgeguard:forgeguard@localhost:5432/forgeguard
+```
+
+See [POSTGRES_QUICKSTART.md](./POSTGRES_QUICKSTART.md) for MCP wiring and least-privilege roles.
 
 ## Security headers
 

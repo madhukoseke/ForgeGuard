@@ -43,4 +43,6 @@ Includes `/api/actions/*` mutations, `/api/guard/*`, and `POST /api/demo`.
 
 Public: `GET /api/health`, `GET /api/demo`, `GET /api/readiness` (advisory).
 
+In production with **`FORGEGUARD_STRICT_CONFIG=1`**, `/api/readiness` returns **503** when the operator token or durable store is missing — use it as a deploy gate before routing traffic.
+
 See [THREAT_MODEL.md](./THREAT_MODEL.md).

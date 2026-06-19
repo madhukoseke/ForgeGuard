@@ -24,4 +24,7 @@ Key patterns:
 
 Local demo requires no InsForge credentials: `npm run dev` → `/dashboard` → **Run demo** (`D`).
 Headless verification: `npm run demo:e2e`. Recording script: [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md).
+
+**Postgres locally:** `docker compose up postgres -d` then set `DATABASE_URL` / `FORGEGUARD_STORE=postgres` — see [docs/POSTGRES_QUICKSTART.md](./docs/POSTGRES_QUICKSTART.md).
+Dev server issues: [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md).
 <!-- INSFORGE:END -->

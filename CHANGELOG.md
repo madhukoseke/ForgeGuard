@@ -70,6 +70,7 @@ Each guarded operation that reaches `applied` status should appear here with:
 ### Docs
 
 - Development workflow, `FORGEGUARD_STRICT_CONFIG`, and local troubleshooting in README / CONTRIBUTING / TROUBLESHOOTING
+- Docker deployment guide, readiness strict-mode behavior, and agent onboarding pointers in DEPLOYMENT / OBSERVABILITY / AGENTS
 
 ### Distribution recording
 
