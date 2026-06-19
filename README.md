@@ -341,10 +341,15 @@ Copy `.env.example` → `.env.local`. All variables are optional for the local d
 2. Set a durable audit store — **`FORGEGUARD_STORE=postgres`** (+ `DATABASE_URL`) or **`insforge`**; memory is ephemeral on serverless
 3. Set **`REPLICAS_WEBHOOK_SECRET`** if using `POST /api/webhooks/replicas`
 4. For InsForge: run **`npm run bootstrap:insforge`** and set `FORGEGUARD_EXECUTOR=insforge`
+5. Optional: set **`FORGEGUARD_STRICT_CONFIG=1`** so `/api/readiness` fails when misconfigured ([DEPLOYMENT.md](./docs/DEPLOYMENT.md))
+
+**Vercel:**
 
 ```bash
 vercel link && vercel --prod
 ```
+
+**Docker** (Postgres + app): see [POSTGRES_QUICKSTART.md](./docs/POSTGRES_QUICKSTART.md) — `docker compose up --build` with `FORGEGUARD_OPERATOR_TOKEN` set.
 
 ---
 

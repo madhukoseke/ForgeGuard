@@ -4,7 +4,29 @@ ForgeGuard works with **any Postgres** database for guarded reads/writes and aud
 
 ## Docker Compose (local)
 
-Create `docker-compose.postgres.yml` or use:
+The repo ships [`docker-compose.yml`](../docker-compose.yml) with Postgres 16 and an optional ForgeGuard app container.
+
+**Postgres only** (typical for local `npm run dev` / `npm run mcp`):
+
+```bash
+docker compose up postgres -d
+```
+
+Connection string:
+
+```
+postgres://forgeguard:forgeguard@localhost:5432/forgeguard
+```
+
+**Full stack** (dashboard + Postgres in Docker):
+
+```bash
+FORGEGUARD_OPERATOR_TOKEN=dev-secret docker compose up --build
+```
+
+Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard) and use the same token when prompted.
+
+**One-off Postgres** (no compose file):
 
 ```bash
 docker run --name forgeguard-pg \
@@ -22,6 +44,14 @@ postgres://postgres:forgeguard@localhost:5432/forgeguard
 
 ## MCP server (stdio)
 
+With compose Postgres (`forgeguard` user):
+
+```bash
+npm run mcp -- --database-url postgres://forgeguard:forgeguard@localhost:5432/forgeguard
+```
+
+With the one-off `docker run` example (`postgres` user):
+
 ```bash
 npm run mcp -- --database-url postgres://postgres:forgeguard@localhost:5432/forgeguard
 ```
@@ -29,13 +59,13 @@ npm run mcp -- --database-url postgres://postgres:forgeguard@localhost:5432/forg
 Or after npm publish:
 
 ```bash
-npx forgeguard-mcp --database-url postgres://postgres:forgeguard@localhost:5432/forgeguard
+npx forgeguard-mcp --database-url postgres://forgeguard:forgeguard@localhost:5432/forgeguard
 ```
 
 ## Dashboard + audit store
 
 ```env
-DATABASE_URL=postgres://postgres:forgeguard@localhost:5432/forgeguard
+DATABASE_URL=postgres://forgeguard:forgeguard@localhost:5432/forgeguard
 FORGEGUARD_STORE=postgres
 FORGEGUARD_BACKEND=postgres
 FORGEGUARD_OPERATOR_TOKEN=<strong-secret>

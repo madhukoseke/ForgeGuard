@@ -94,3 +94,11 @@ Copy from [`forgeguard.config.example.json`](../forgeguard.config.example.json).
 | `list_actions` | Recent audit trail |
 
 See [STABLE_0.3.0.md](./STABLE_0.3.0.md) for stability notes.
+
+## Postgres backend
+
+Point `--database-url` at any Postgres instance. Local Docker setup: [POSTGRES_QUICKSTART.md](./POSTGRES_QUICKSTART.md).
+
+## Troubleshooting
+
+Dev server workspace detection, stale caches, and operator token issues: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

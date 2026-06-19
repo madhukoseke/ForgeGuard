@@ -62,6 +62,15 @@ Each guarded operation that reaches `applied` status should appear here with:
 
 ## Unreleased
 
+### Fixed
+
+- **Turbopack workspace root** — pin project root in `next.config.js` so `npm run dev` does not infer a parent lockfile directory
+- **Postgres quick start** — align Docker Compose docs with root `docker-compose.yml` credentials
+
+### Docs
+
+- Development workflow, `FORGEGUARD_STRICT_CONFIG`, and local troubleshooting in README / CONTRIBUTING / TROUBLESHOOTING
+
 ### Distribution recording
 
 - Follow [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md) to capture MP4/GIF; add to `docs/assets/` and link from README when ready.
