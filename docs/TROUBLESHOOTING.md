@@ -27,6 +27,20 @@ npm run dev
 
 `.env.local` and `.insforge/` are not removed.
 
+## Docker Compose Postgres connection refused
+
+**Symptom:** MCP or dashboard cannot connect after `docker compose up postgres`.
+
+**Fix:** Use the compose credentials (not the standalone `docker run` example):
+
+```env
+DATABASE_URL=postgres://forgeguard:forgeguard@localhost:5432/forgeguard
+FORGEGUARD_BACKEND=postgres
+FORGEGUARD_STORE=postgres
+```
+
+Confirm the container is running: `docker compose ps`. See [POSTGRES_QUICKSTART.md](./POSTGRES_QUICKSTART.md).
+
 ## Missing `DATABASE_URL`
 
 **Symptom:** MCP or dashboard falls back to memory; log shows `falling back to memory backend`.
@@ -53,7 +67,7 @@ For demo only, omit credentials and use memory intentionally.
 
 **Fix:** Use `FORGEGUARD_STORE=postgres` with `DATABASE_URL`, or `insforge` with InsForge credentials. Memory is demo-only on serverless.
 
-Check `/api/readiness` for warnings.
+Check `/api/readiness` for warnings. Set **`FORGEGUARD_STRICT_CONFIG=1`** in production so misconfiguration fails deploy checks (503). See [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## npm cache permission errors
 

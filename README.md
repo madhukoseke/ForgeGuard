@@ -407,6 +407,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and [doc
 | [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Common issues |
 | [ADMIN_TOKEN.md](./docs/ADMIN_TOKEN.md) | Operator token model |
 | [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Production deployment |
+| [OBSERVABILITY.md](./docs/OBSERVABILITY.md) | Health, readiness, and logging |
 | [API_STABILITY.md](./docs/API_STABILITY.md) | HTTP/MCP stability policy |
 | [examples/MCP_RESPONSES.md](./docs/examples/MCP_RESPONSES.md) | Sample guard responses |
 | [RELEASE_CHECKLIST.md](./docs/RELEASE_CHECKLIST.md) | Maintainer release steps |

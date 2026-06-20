@@ -40,6 +40,7 @@ These endpoints are intentionally unauthenticated:
 | Endpoint | Exposes |
 |----------|---------|
 | `GET /api/health` | Store mode, executor, integration booleans (InsForge reachable, Replicas/Limrun configured) |
+| `GET /api/readiness` | Advisory config warnings (`ready`, `warnings[]`); returns **503** when `FORGEGUARD_STRICT_CONFIG=1` in production and config is unsafe |
 | `GET /api/demo` | Canned demo operation metadata |
 
 They do not expose SQL, audit rows, or secrets. Use `GET /api/health?minimal=1` for a reduced payload in production monitoring.

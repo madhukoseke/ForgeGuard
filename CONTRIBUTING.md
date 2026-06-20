@@ -14,6 +14,8 @@ npm run precommit    # typecheck + lint + test + build (run before opening a PR)
 
 Optional live InsForge: copy `.env.example` to `.env.local`, link a project with the InsForge CLI, then `npm run bootstrap:insforge`.
 
+Optional local Postgres: `docker compose up postgres -d`, then set `DATABASE_URL=postgres://forgeguard:forgeguard@localhost:5432/forgeguard` and `FORGEGUARD_STORE=postgres` in `.env.local`. See [docs/POSTGRES_QUICKSTART.md](./docs/POSTGRES_QUICKSTART.md).
+
 If `npm run dev` mis-detects the workspace or caches look stale, see [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md).
 
 ## Pull requests

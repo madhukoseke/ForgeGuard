@@ -71,6 +71,7 @@ Each guarded operation that reaches `applied` status should appear here with:
 
 - Development workflow, `FORGEGUARD_STRICT_CONFIG`, and local troubleshooting in README / CONTRIBUTING / TROUBLESHOOTING
 - Docker deployment guide, readiness strict-mode behavior, and agent onboarding pointers in DEPLOYMENT / OBSERVABILITY / AGENTS
+- Threat model and troubleshooting cover `/api/readiness`, Docker Compose credentials, and contributor Postgres setup
 
 ### Distribution recording
 

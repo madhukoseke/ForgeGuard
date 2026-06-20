@@ -40,6 +40,8 @@ INSFORGE_KEY=ik_...
 FORGEGUARD_STORE=insforge
 FORGEGUARD_EXECUTOR=insforge
 FORGEGUARD_OPERATOR_TOKEN=<strong-random-secret>
+# Production deploy gate (returns 503 on /api/readiness when misconfigured):
+# FORGEGUARD_STRICT_CONFIG=1
 ```
 
 ## 4. Verify integration
