@@ -53,6 +53,14 @@ export function createDataBackend(kind: BackendKind): DataBackend {
   return new MemoryBackend();
 }
 
+/** Resolved data backend (after credential fallback), without using the cached singleton. */
+export function activeBackendKind(): BackendKind {
+  const kind = requestedBackendKind();
+  if (kind === "postgres" && PostgresBackend.fromEnv()) return "postgres";
+  if (kind === "insforge" && InsForgeBackend.fromEnv()) return "insforge";
+  return "memory";
+}
+
 export function getDataBackend(): DataBackend {
   if (!backend) backend = createDataBackend(requestedBackendKind());
   return backend;

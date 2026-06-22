@@ -351,6 +351,27 @@ class InsForgeStore implements ActionStore {
 
 let store: ActionStore | null = null;
 
+export type StoreKind = "memory" | "postgres" | "insforge";
+
+/** Resolved audit store (after credential fallback), without instantiating the store. */
+export function activeStoreKind(): StoreKind {
+  const backend = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();
+  if (
+    backend === "insforge" &&
+    process.env.INSFORGE_URL?.trim() &&
+    process.env.INSFORGE_KEY?.trim()
+  ) {
+    return "insforge";
+  }
+  if (
+    backend === "postgres" &&
+    (process.env.FORGEGUARD_DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim())
+  ) {
+    return "postgres";
+  }
+  return "memory";
+}
+
 export function getStore(): ActionStore {
   if (store) return store;
   const backend = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();

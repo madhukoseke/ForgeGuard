@@ -64,6 +64,7 @@ Each guarded operation that reaches `applied` status should appear here with:
 
 ### Fixed
 
+- **`/api/health` store field** — report resolved `postgres` / `insforge` / `memory` instead of always `memory` when not on InsForge
 - **Turbopack workspace root** — pin project root in `next.config.js` so `npm run dev` does not infer a parent lockfile directory
 - **Postgres quick start** — align Docker Compose docs with root `docker-compose.yml` credentials
 

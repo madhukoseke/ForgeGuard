@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { activeBackendKind } from "@/lib/backends";
 import {
   getExecutorMode,
   getInsForgeConfig,
@@ -6,7 +7,8 @@ import {
   isBranchCliEnabled,
 } from "@/lib/insforge-client";
 import { isLimrunConfigured } from "@/lib/limrun";
-import { getStore } from "@/lib/store";
+import { isStrictConfig } from "@/lib/production";
+import { activeStoreKind, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +18,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const storeBackend = (
-    process.env.FORGEGUARD_STORE || "memory"
-  ).toLowerCase();
-  const executor = getExecutorMode();
   const configured = getInsForgeConfig() !== null;
 
   let insforge_reachable = false;
@@ -41,10 +39,12 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    store: storeBackend === "insforge" && configured ? "insforge" : "memory",
-    executor,
+    store: activeStoreKind(),
+    backend: activeBackendKind(),
+    executor: getExecutorMode(),
     insforge_configured: configured,
     insforge_reachable,
+    strict: isStrictConfig(),
     branch_cli: isBranchCliEnabled(),
     replicas_webhook: Boolean(process.env.REPLICAS_WEBHOOK_SECRET?.trim()),
     limrun: isLimrunConfigured(),
