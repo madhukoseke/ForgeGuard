@@ -28,6 +28,15 @@ See [`lib/types.ts`](../lib/types.ts) and [`sql/schema.sql`](../sql/schema.sql).
 
 Enrichment fields (`replica_id`, `pr_urls`, `preview_url`) may be null.
 
+## Stable ops endpoints
+
+| Endpoint | Stable fields |
+|----------|----------------|
+| `GET /api/health` | `store`, `backend`, `executor`, `insforge_configured`, `insforge_reachable`, `strict` |
+| `GET /api/readiness` | `ready`, `warnings`, `store`, `backend`, `executor`, `production`, `strict` |
+
+`GET /api/health?minimal=1` returns only `{ ok: true }`.
+
 ## Breaking changes
 
 Announced in [CHANGELOG.md](../CHANGELOG.md) with migration notes. Before 1.0:
