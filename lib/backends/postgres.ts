@@ -1,6 +1,7 @@
 // Any-Postgres backend (node-postgres). Configure with DATABASE_URL.
 
 import { Pool } from "pg";
+import { postgresConnectionUrl } from "../postgres-env";
 import {
   ColumnInfo,
   DataBackend,
@@ -44,9 +45,7 @@ export class PostgresBackend implements DataBackend {
   }
 
   static fromEnv(): PostgresBackend | null {
-    const url =
-      process.env.FORGEGUARD_DATABASE_URL?.trim() ||
-      process.env.DATABASE_URL?.trim();
+    const url = postgresConnectionUrl();
     return url ? new PostgresBackend(url) : null;
   }
 

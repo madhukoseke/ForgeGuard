@@ -5,6 +5,7 @@
 
 import { Pool } from "pg";
 import { computeActionSummary, type ActionSummary } from "./action-summary";
+import { postgresConnectionUrl } from "./postgres-env";
 import type { ActionListPage, ActionStore } from "./store";
 import type { AgentAction } from "./types";
 
@@ -107,9 +108,7 @@ export class PostgresStore implements ActionStore {
   }
 
   static fromEnv(): PostgresStore | null {
-    const url =
-      process.env.FORGEGUARD_DATABASE_URL?.trim() ||
-      process.env.DATABASE_URL?.trim();
+    const url = postgresConnectionUrl();
     return url ? new PostgresStore(url) : null;
   }
 

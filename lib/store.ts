@@ -10,6 +10,7 @@
 // The interface is identical either way, so the dashboard/API don't care.
 
 import { computeActionSummary, type ActionSummary } from "./action-summary";
+import { hasPostgresConnectionUrl } from "./postgres-env";
 import { isProduction } from "./production";
 import { PostgresStore } from "./store-postgres";
 import { AgentAction, ActionStatus } from "./types";
@@ -363,10 +364,7 @@ export function activeStoreKind(): StoreKind {
   ) {
     return "insforge";
   }
-  if (
-    backend === "postgres" &&
-    (process.env.FORGEGUARD_DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim())
-  ) {
+  if (backend === "postgres" && hasPostgresConnectionUrl()) {
     return "postgres";
   }
   return "memory";

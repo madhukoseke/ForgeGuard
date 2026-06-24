@@ -4,6 +4,7 @@ import { collectReadinessWarnings } from "../lib/readiness";
 
 const ORIG = {
   FORGEGUARD_STORE: process.env.FORGEGUARD_STORE,
+  FORGEGUARD_BACKEND: process.env.FORGEGUARD_BACKEND,
   DATABASE_URL: process.env.DATABASE_URL,
   FORGEGUARD_DATABASE_URL: process.env.FORGEGUARD_DATABASE_URL,
   NODE_ENV: process.env.NODE_ENV,
@@ -36,5 +37,17 @@ test("collectReadinessWarnings flags missing postgres credentials", () => {
   delete process.env.FORGEGUARD_DATABASE_URL;
   assert.ok(
     collectReadinessWarnings().some((w) => w.includes("DATABASE_URL is missing")),
+  );
+});
+
+test("collectReadinessWarnings flags explicit postgres backend without credentials", () => {
+  process.env.NODE_ENV = "development";
+  process.env.FORGEGUARD_BACKEND = "postgres";
+  delete process.env.DATABASE_URL;
+  delete process.env.FORGEGUARD_DATABASE_URL;
+  assert.ok(
+    collectReadinessWarnings().some((w) =>
+      w.includes("FORGEGUARD_BACKEND=postgres"),
+    ),
   );
 });

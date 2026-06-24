@@ -1,19 +1,13 @@
 import { activeBackendKind } from "./backends";
 import { getInsForgeConfig } from "./insforge-client";
+import { postgresConnectionUrl } from "./postgres-env";
 import { isProduction } from "./production";
 import { activeStoreKind } from "./store";
-
-function postgresUrl(): string | undefined {
-  return (
-    process.env.FORGEGUARD_DATABASE_URL?.trim() ||
-    process.env.DATABASE_URL?.trim() ||
-    undefined
-  );
-}
 
 export function collectReadinessWarnings(): string[] {
   const warnings: string[] = [];
   const storeRequested = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();
+  const backendRequested = (process.env.FORGEGUARD_BACKEND || "").toLowerCase();
 
   if (isProduction() && !process.env.FORGEGUARD_OPERATOR_TOKEN?.trim()) {
     warnings.push("FORGEGUARD_OPERATOR_TOKEN is not set");
@@ -21,8 +15,11 @@ export function collectReadinessWarnings(): string[] {
   if (isProduction() && storeRequested === "memory") {
     warnings.push("FORGEGUARD_STORE=memory is ephemeral on serverless");
   }
-  if (storeRequested === "postgres" && !postgresUrl()) {
+  if (storeRequested === "postgres" && !postgresConnectionUrl()) {
     warnings.push("FORGEGUARD_STORE=postgres but DATABASE_URL is missing");
+  }
+  if (backendRequested === "postgres" && !postgresConnectionUrl()) {
+    warnings.push("FORGEGUARD_BACKEND=postgres but DATABASE_URL is missing");
   }
   if (storeRequested === "insforge" && !getInsForgeConfig()) {
     warnings.push("FORGEGUARD_STORE=insforge but INSFORGE_URL/INSFORGE_KEY missing");

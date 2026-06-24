@@ -8,6 +8,7 @@ import {
 } from "@/lib/insforge-client";
 import { isLimrunConfigured } from "@/lib/limrun";
 import { isStrictConfig } from "@/lib/production";
+import { readinessSnapshot } from "@/lib/readiness";
 import { activeStoreKind, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -38,9 +39,12 @@ export async function GET(req: Request) {
     /* ignore */
   }
 
+  const { ready } = readinessSnapshot();
+
   return NextResponse.json({
     store: activeStoreKind(),
     backend: activeBackendKind(),
+    ready,
     executor: getExecutorMode(),
     insforge_configured: configured,
     insforge_reachable,
