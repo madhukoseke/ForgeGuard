@@ -2,7 +2,7 @@
 
 ## Health
 
-`GET /api/health` — integration booleans (resolved `store` / `backend`, `ready`, executor, InsForge reachable, partner config).
+`GET /api/health` — integration booleans (resolved `store` / `backend`, config `ready`, `store_reachable`, `backend_reachable`, executor, InsForge reachable, partner config).
 
 Use `GET /api/health?minimal=1` in production probes for a minimal `{ ok: true }` response.
 

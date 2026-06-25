@@ -39,7 +39,7 @@ These endpoints are intentionally unauthenticated:
 
 | Endpoint | Exposes |
 |----------|---------|
-| `GET /api/health` | Resolved `store` / `backend`, executor, integration booleans (InsForge reachable, Replicas/Limrun configured, `strict`) |
+| `GET /api/health` | Resolved `store` / `backend`, config `ready`, runtime reachability (`store_reachable`, `backend_reachable`), executor, integration booleans (InsForge reachable, Replicas/Limrun configured, `strict`) |
 | `GET /api/readiness` | Advisory config warnings (`ready`, `warnings[]`); returns **503** when `FORGEGUARD_STRICT_CONFIG=1` in production and config is unsafe |
 | `GET /api/demo` | Canned demo operation metadata |
 

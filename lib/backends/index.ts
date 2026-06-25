@@ -5,6 +5,8 @@
 import { InsForgeBackend } from "./insforge";
 import { MemoryBackend } from "./memory";
 import { PostgresBackend } from "./postgres";
+import { isInsForgeConfigured } from "../insforge-client";
+import { hasPostgresConnectionUrl } from "../postgres-env";
 import type { BackendKind, DataBackend } from "./types";
 
 export type { BackendKind, ColumnInfo, DataBackend, SqlResult, TableInfo } from "./types";
@@ -19,7 +21,7 @@ export function requestedBackendKind(): BackendKind {
   const raw = (process.env.FORGEGUARD_BACKEND || "").toLowerCase();
   if (raw === "postgres" || raw === "insforge" || raw === "memory") return raw;
   // Back-compat: infer from existing env when FORGEGUARD_BACKEND is unset.
-  if (process.env.FORGEGUARD_DATABASE_URL || process.env.DATABASE_URL) {
+  if (hasPostgresConnectionUrl()) {
     return "postgres";
   }
   if (
@@ -56,8 +58,8 @@ export function createDataBackend(kind: BackendKind): DataBackend {
 /** Resolved data backend (after credential fallback), without using the cached singleton. */
 export function activeBackendKind(): BackendKind {
   const kind = requestedBackendKind();
-  if (kind === "postgres" && PostgresBackend.fromEnv()) return "postgres";
-  if (kind === "insforge" && InsForgeBackend.fromEnv()) return "insforge";
+  if (kind === "postgres" && hasPostgresConnectionUrl()) return "postgres";
+  if (kind === "insforge" && isInsForgeConfigured()) return "insforge";
   return "memory";
 }
 

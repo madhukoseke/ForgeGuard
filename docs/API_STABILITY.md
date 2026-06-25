@@ -32,7 +32,7 @@ Enrichment fields (`replica_id`, `pr_urls`, `preview_url`) may be null.
 
 | Endpoint | Stable fields |
 |----------|----------------|
-| `GET /api/health` | `store`, `backend`, `ready`, `executor`, `insforge_configured`, `insforge_reachable`, `strict` |
+| `GET /api/health` | `store`, `backend`, `ready`, `store_reachable`, `backend_reachable`, `executor`, `insforge_configured`, `insforge_reachable`, `strict` |
 | `GET /api/readiness` | `ready`, `warnings`, `store`, `backend`, `executor`, `production`, `strict` |
 
 `GET /api/health?minimal=1` returns only `{ ok: true }`.

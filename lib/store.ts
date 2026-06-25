@@ -10,6 +10,7 @@
 // The interface is identical either way, so the dashboard/API don't care.
 
 import { computeActionSummary, type ActionSummary } from "./action-summary";
+import { getInsForgeConfig } from "./insforge-client";
 import { hasPostgresConnectionUrl } from "./postgres-env";
 import { isProduction } from "./production";
 import { PostgresStore } from "./store-postgres";
@@ -357,11 +358,7 @@ export type StoreKind = "memory" | "postgres" | "insforge";
 /** Resolved audit store (after credential fallback), without instantiating the store. */
 export function activeStoreKind(): StoreKind {
   const backend = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();
-  if (
-    backend === "insforge" &&
-    process.env.INSFORGE_URL?.trim() &&
-    process.env.INSFORGE_KEY?.trim()
-  ) {
+  if (backend === "insforge" && getInsForgeConfig()) {
     return "insforge";
   }
   if (backend === "postgres" && hasPostgresConnectionUrl()) {
