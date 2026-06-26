@@ -5,6 +5,7 @@ import {
   InsForgeClient,
   isBranchCliEnabled,
 } from "@/lib/insforge-client";
+import { probeRuntimeHealth, resolveInsforgeReachable } from "@/lib/health-probe";
 import { isLimrunConfigured } from "@/lib/limrun";
 import { isStrictConfig } from "@/lib/production";
 import { readinessSnapshotWithRuntime } from "@/lib/readiness";
@@ -20,22 +21,29 @@ export async function GET(req: Request) {
   const configured = getInsForgeConfig() !== null;
   const snapshot = await readinessSnapshotWithRuntime();
 
-  let insforge_reachable = false;
-  if (configured) {
+  let remoteInsforgeReachable = false;
+  if (configured && snapshot.store !== "insforge" && snapshot.backend !== "insforge") {
     const client = InsForgeClient.fromEnv();
     if (client) {
       try {
-        insforge_reachable = await client.healthCheck();
+        remoteInsforgeReachable = await client.healthCheck();
       } catch {
-        insforge_reachable = false;
+        remoteInsforgeReachable = false;
       }
     }
   }
+
+  const insforge_reachable = resolveInsforgeReachable(
+    configured,
+    snapshot,
+    remoteInsforgeReachable,
+  );
 
   return NextResponse.json({
     store: snapshot.store,
     backend: snapshot.backend,
     ready: snapshot.ready,
+    warnings: snapshot.warnings,
     store_reachable: snapshot.store_reachable,
     backend_reachable: snapshot.backend_reachable,
     executor: getExecutorMode(),
