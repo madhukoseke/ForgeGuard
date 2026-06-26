@@ -1,8 +1,9 @@
-import { activeBackendKind } from "./backends";
+import { activeBackendKind, type BackendKind } from "./backends";
+import { probeRuntimeHealth } from "./health-probe";
 import { getInsForgeConfig } from "./insforge-client";
 import { postgresConnectionUrl } from "./postgres-env";
 import { isProduction } from "./production";
-import { activeStoreKind } from "./store";
+import { activeStoreKind, type StoreKind } from "./store";
 
 export function collectReadinessWarnings(): string[] {
   const warnings: string[] = [];
@@ -20,6 +21,9 @@ export function collectReadinessWarnings(): string[] {
   }
   if (backendRequested === "postgres" && !postgresConnectionUrl()) {
     warnings.push("FORGEGUARD_BACKEND=postgres but DATABASE_URL is missing");
+  }
+  if (backendRequested === "insforge" && !getInsForgeConfig()) {
+    warnings.push("FORGEGUARD_BACKEND=insforge but INSFORGE_URL/INSFORGE_KEY missing");
   }
   if (storeRequested === "insforge" && !getInsForgeConfig()) {
     warnings.push("FORGEGUARD_STORE=insforge but INSFORGE_URL/INSFORGE_KEY missing");
@@ -40,5 +44,42 @@ export function readinessSnapshot() {
     store: activeStoreKind(),
     backend: activeBackendKind(),
     ready: warnings.length === 0,
+  };
+}
+
+export function runtimeReadinessWarnings(
+  store: StoreKind,
+  backend: BackendKind,
+  reachability: { store_reachable: boolean; backend_reachable: boolean },
+): string[] {
+  const warnings: string[] = [];
+  if (store === "postgres" && !reachability.store_reachable) {
+    warnings.push("Postgres audit store is not reachable");
+  }
+  if (store === "insforge" && !reachability.store_reachable) {
+    warnings.push("InsForge audit store is not reachable");
+  }
+  if (backend === "postgres" && !reachability.backend_reachable) {
+    warnings.push("Postgres data backend is not reachable");
+  }
+  if (backend === "insforge" && !reachability.backend_reachable) {
+    warnings.push("InsForge data backend is not reachable");
+  }
+  return warnings;
+}
+
+export async function readinessSnapshotWithRuntime() {
+  const base = readinessSnapshot();
+  const reachability = await probeRuntimeHealth();
+  const warnings = [
+    ...base.warnings,
+    ...runtimeReadinessWarnings(base.store, base.backend, reachability),
+  ];
+  return {
+    store: base.store,
+    backend: base.backend,
+    warnings,
+    ready: warnings.length === 0,
+    ...reachability,
   };
 }

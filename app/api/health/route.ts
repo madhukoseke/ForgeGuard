@@ -5,10 +5,9 @@ import {
   InsForgeClient,
   isBranchCliEnabled,
 } from "@/lib/insforge-client";
-import { probeRuntimeHealth } from "@/lib/health-probe";
 import { isLimrunConfigured } from "@/lib/limrun";
 import { isStrictConfig } from "@/lib/production";
-import { readinessSnapshot } from "@/lib/readiness";
+import { readinessSnapshotWithRuntime } from "@/lib/readiness";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +18,7 @@ export async function GET(req: Request) {
   }
 
   const configured = getInsForgeConfig() !== null;
-  const { store, backend, ready } = readinessSnapshot();
-  const { store_reachable, backend_reachable } = await probeRuntimeHealth();
+  const snapshot = await readinessSnapshotWithRuntime();
 
   let insforge_reachable = false;
   if (configured) {
@@ -35,11 +33,11 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    store,
-    backend,
-    ready,
-    store_reachable,
-    backend_reachable,
+    store: snapshot.store,
+    backend: snapshot.backend,
+    ready: snapshot.ready,
+    store_reachable: snapshot.store_reachable,
+    backend_reachable: snapshot.backend_reachable,
     executor: getExecutorMode(),
     insforge_configured: configured,
     insforge_reachable,

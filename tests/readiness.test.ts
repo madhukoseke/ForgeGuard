@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { collectReadinessWarnings } from "../lib/readiness";
+import { collectReadinessWarnings, runtimeReadinessWarnings } from "../lib/readiness";
 
 const ORIG = {
   FORGEGUARD_STORE: process.env.FORGEGUARD_STORE,
@@ -50,4 +50,27 @@ test("collectReadinessWarnings flags explicit postgres backend without credentia
       w.includes("FORGEGUARD_BACKEND=postgres"),
     ),
   );
+});
+
+test("collectReadinessWarnings flags explicit insforge backend without credentials", () => {
+  process.env.NODE_ENV = "development";
+  process.env.FORGEGUARD_BACKEND = "insforge";
+  delete process.env.INSFORGE_URL;
+  delete process.env.INSFORGE_KEY;
+  assert.ok(
+    collectReadinessWarnings().some((w) =>
+      w.includes("FORGEGUARD_BACKEND=insforge"),
+    ),
+  );
+});
+
+test("runtimeReadinessWarnings flags unreachable postgres dependencies", () => {
+  const warnings = runtimeReadinessWarnings(
+    "postgres",
+    "postgres",
+    { store_reachable: false, backend_reachable: false },
+  );
+  assert.equal(warnings.length, 2);
+  assert.ok(warnings.some((w) => w.includes("audit store")));
+  assert.ok(warnings.some((w) => w.includes("data backend")));
 });
