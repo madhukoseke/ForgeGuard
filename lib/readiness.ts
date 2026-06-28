@@ -9,6 +9,7 @@ export function collectReadinessWarnings(): string[] {
   const warnings: string[] = [];
   const storeRequested = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();
   const backendRequested = (process.env.FORGEGUARD_BACKEND || "").toLowerCase();
+  const executorRequested = (process.env.FORGEGUARD_EXECUTOR || "simulated").toLowerCase();
 
   if (isProduction() && !process.env.FORGEGUARD_OPERATOR_TOKEN?.trim()) {
     warnings.push("FORGEGUARD_OPERATOR_TOKEN is not set");
@@ -24,6 +25,9 @@ export function collectReadinessWarnings(): string[] {
   }
   if (backendRequested === "insforge" && !getInsForgeConfig()) {
     warnings.push("FORGEGUARD_BACKEND=insforge but INSFORGE_URL/INSFORGE_KEY missing");
+  }
+  if (executorRequested === "insforge" && !getInsForgeConfig()) {
+    warnings.push("FORGEGUARD_EXECUTOR=insforge but INSFORGE_URL/INSFORGE_KEY missing");
   }
   if (storeRequested === "insforge" && !getInsForgeConfig()) {
     warnings.push("FORGEGUARD_STORE=insforge but INSFORGE_URL/INSFORGE_KEY missing");

@@ -5,6 +5,7 @@ import { collectReadinessWarnings, runtimeReadinessWarnings } from "../lib/readi
 const ORIG = {
   FORGEGUARD_STORE: process.env.FORGEGUARD_STORE,
   FORGEGUARD_BACKEND: process.env.FORGEGUARD_BACKEND,
+  FORGEGUARD_EXECUTOR: process.env.FORGEGUARD_EXECUTOR,
   DATABASE_URL: process.env.DATABASE_URL,
   FORGEGUARD_DATABASE_URL: process.env.FORGEGUARD_DATABASE_URL,
   NODE_ENV: process.env.NODE_ENV,
@@ -60,6 +61,18 @@ test("collectReadinessWarnings flags explicit insforge backend without credentia
   assert.ok(
     collectReadinessWarnings().some((w) =>
       w.includes("FORGEGUARD_BACKEND=insforge"),
+    ),
+  );
+});
+
+test("collectReadinessWarnings flags explicit insforge executor without credentials", () => {
+  process.env.NODE_ENV = "development";
+  process.env.FORGEGUARD_EXECUTOR = "insforge";
+  delete process.env.INSFORGE_URL;
+  delete process.env.INSFORGE_KEY;
+  assert.ok(
+    collectReadinessWarnings().some((w) =>
+      w.includes("FORGEGUARD_EXECUTOR=insforge"),
     ),
   );
 });

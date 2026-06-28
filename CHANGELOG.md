@@ -69,6 +69,7 @@ Each guarded operation that reaches `applied` status should appear here with:
 - **Postgres env helper** — shared `postgresConnectionUrl()` for store, backend, and readiness probes
 - **`/api/health` connectivity** — `store_reachable` and `backend_reachable` probe the active store and data backend; `/api/readiness` includes the same runtime checks in `ready` / `warnings`
 - **Docker Compose app healthcheck** — `docker compose` waits for `/api/health?minimal=1` before marking the app healthy
+- **Health status helper** — shared `getHealthStatus()` powers `/api/health`; readiness warns when `FORGEGUARD_EXECUTOR=insforge` lacks credentials
 - **Turbopack workspace root** — pin project root in `next.config.js` so `npm run dev` does not infer a parent lockfile directory
 - **Postgres quick start** — align Docker Compose docs with root `docker-compose.yml` credentials
 

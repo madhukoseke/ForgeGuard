@@ -24,6 +24,7 @@ services:
       FORGEGUARD_STORE: postgres
       FORGEGUARD_BACKEND: postgres
       FORGEGUARD_OPERATOR_TOKEN: ${FORGEGUARD_OPERATOR_TOKEN:-change-me-in-production}
+      # Optional production gate: FORGEGUARD_STRICT_CONFIG=1
     depends_on:
       postgres:
         condition: service_healthy

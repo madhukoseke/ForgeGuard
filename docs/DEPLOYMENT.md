@@ -39,6 +39,8 @@ docker compose up postgres -d
 FORGEGUARD_OPERATOR_TOKEN=<strong-secret> docker compose up --build -d
 ```
 
+The app service exposes a Docker healthcheck on `GET /api/health?minimal=1` (process liveness). Use `GET /api/readiness` on the host for config + connectivity before routing traffic.
+
 Connection string for the bundled Postgres service:
 
 ```
