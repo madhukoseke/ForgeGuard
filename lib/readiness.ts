@@ -1,6 +1,6 @@
 import { activeBackendKind, type BackendKind } from "./backends";
-import { probeRuntimeHealth } from "./health-probe";
-import { getInsForgeConfig } from "./insforge-client";
+import { probeRemoteInsforgeReachable, probeRuntimeHealth } from "./health-probe";
+import { getExecutorMode, getInsForgeConfig } from "./insforge-client";
 import { postgresConnectionUrl } from "./postgres-env";
 import { isProduction } from "./production";
 import { activeStoreKind, type StoreKind } from "./store";
@@ -72,6 +72,20 @@ export function runtimeReadinessWarnings(
   return warnings;
 }
 
+export function executorReachabilityWarning(
+  executor: ReturnType<typeof getExecutorMode>,
+  store: StoreKind,
+  backend: BackendKind,
+  remoteInsforgeReachable: boolean,
+): string | null {
+  if (executor !== "insforge") return null;
+  if (store === "insforge" || backend === "insforge") return null;
+  if (!remoteInsforgeReachable) {
+    return "InsForge executor is not reachable";
+  }
+  return null;
+}
+
 export async function readinessSnapshotWithRuntime() {
   const base = readinessSnapshot();
   const reachability = await probeRuntimeHealth();
@@ -79,11 +93,25 @@ export async function readinessSnapshotWithRuntime() {
     ...base.warnings,
     ...runtimeReadinessWarnings(base.store, base.backend, reachability),
   ];
+  const executor = getExecutorMode();
+  const remoteInsforgeReachable = await probeRemoteInsforgeReachable({
+    store: base.store,
+    backend: base.backend,
+  });
+  const executorWarning = executorReachabilityWarning(
+    executor,
+    base.store,
+    base.backend,
+    remoteInsforgeReachable,
+  );
+  if (executorWarning) warnings.push(executorWarning);
+
   return {
     store: base.store,
     backend: base.backend,
     warnings,
     ready: warnings.length === 0,
+    remote_insforge_reachable: remoteInsforgeReachable,
     ...reachability,
   };
 }

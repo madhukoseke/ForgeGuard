@@ -1,26 +1,13 @@
 import { NextResponse } from "next/server";
-import { getExecutorMode } from "@/lib/insforge-client";
-import { readinessSnapshotWithRuntime } from "@/lib/readiness";
-import { isProduction, isStrictConfig } from "@/lib/production";
+import { getReadinessStatus } from "@/lib/readiness-status";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const snapshot = await readinessSnapshotWithRuntime();
+  const status = await getReadinessStatus();
+  const body = { ...status };
 
-  const body = {
-    ready: snapshot.ready,
-    warnings: snapshot.warnings,
-    store: snapshot.store,
-    backend: snapshot.backend,
-    store_reachable: snapshot.store_reachable,
-    backend_reachable: snapshot.backend_reachable,
-    executor: getExecutorMode(),
-    production: isProduction(),
-    strict: isStrictConfig(),
-  };
-
-  if (isStrictConfig() && isProduction() && !snapshot.ready) {
+  if (status.strict && status.production && !status.ready) {
     return NextResponse.json(body, { status: 503 });
   }
 

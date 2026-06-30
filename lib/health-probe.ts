@@ -1,5 +1,6 @@
 import { getDataBackend } from "./backends";
 import type { BackendKind } from "./backends/types";
+import { getInsForgeConfig, InsForgeClient } from "./insforge-client";
 import { getStore, type StoreKind } from "./store";
 
 export async function probeRuntimeHealth(): Promise<{
@@ -38,4 +39,22 @@ export function resolveInsforgeReachable(
   if (snapshot.store === "insforge") return snapshot.store_reachable;
   if (snapshot.backend === "insforge") return snapshot.backend_reachable;
   return remoteReachable;
+}
+
+/** Ping InsForge when only the executor (not store/backend) depends on it. */
+export async function probeRemoteInsforgeReachable(snapshot: {
+  store: StoreKind;
+  backend: BackendKind;
+}): Promise<boolean> {
+  if (!getInsForgeConfig()) return false;
+  if (snapshot.store === "insforge" || snapshot.backend === "insforge") {
+    return false;
+  }
+  const client = InsForgeClient.fromEnv();
+  if (!client) return false;
+  try {
+    return await client.healthCheck();
+  } catch {
+    return false;
+  }
 }

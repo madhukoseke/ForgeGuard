@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { collectReadinessWarnings, runtimeReadinessWarnings } from "../lib/readiness";
+import { collectReadinessWarnings, executorReachabilityWarning, runtimeReadinessWarnings } from "../lib/readiness";
 
 const ORIG = {
   FORGEGUARD_STORE: process.env.FORGEGUARD_STORE,
@@ -74,6 +74,21 @@ test("collectReadinessWarnings flags explicit insforge executor without credenti
     collectReadinessWarnings().some((w) =>
       w.includes("FORGEGUARD_EXECUTOR=insforge"),
     ),
+  );
+});
+
+test("executorReachabilityWarning flags unreachable executor-only InsForge", () => {
+  assert.equal(
+    executorReachabilityWarning("insforge", "postgres", "postgres", false),
+    "InsForge executor is not reachable",
+  );
+  assert.equal(
+    executorReachabilityWarning("insforge", "insforge", "memory", false),
+    null,
+  );
+  assert.equal(
+    executorReachabilityWarning("simulated", "postgres", "postgres", false),
+    null,
   );
 });
 
