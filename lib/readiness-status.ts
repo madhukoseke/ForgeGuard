@@ -1,6 +1,7 @@
 import { getExecutorMode } from "./insforge-client";
 import { isProduction, isStrictConfig } from "./production";
 import { readinessSnapshotWithRuntime } from "./readiness";
+import { getAppVersion } from "./version";
 
 export async function getReadinessStatus() {
   const snapshot = await readinessSnapshotWithRuntime();
@@ -16,5 +17,6 @@ export async function getReadinessStatus() {
     executor: getExecutorMode(),
     production: isProduction(),
     strict: isStrictConfig(),
+    version: getAppVersion(),
   };
 }

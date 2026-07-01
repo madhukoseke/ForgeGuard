@@ -70,7 +70,42 @@ paths:
   /api/health:
     get:
       summary: Integration status (public)
+      parameters:
+        - name: minimal
+          in: query
+          schema: { type: string, enum: ["1"] }
+          description: Returns `{ ok: true }` for process liveness probes
+      responses:
+        "200":
+          description: Health payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  store: { type: string, enum: [memory, postgres, insforge] }
+                  backend: { type: string, enum: [memory, postgres, insforge] }
+                  ready: { type: boolean }
+                  warnings: { type: array, items: { type: string } }
+                  store_reachable: { type: boolean }
+                  backend_reachable: { type: boolean }
+                  version: { type: string }
 
   /api/readiness:
     get:
       summary: Deployment advisory warnings (public)
+      responses:
+        "200":
+          description: Ready
+        "503":
+          description: Not ready when FORGEGUARD_STRICT_CONFIG=1 in production
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ready: { type: boolean }
+                  warnings: { type: array, items: { type: string } }
+                  store: { type: string }
+                  backend: { type: string }
+                  version: { type: string }

@@ -71,6 +71,8 @@ Each guarded operation that reaches `applied` status should appear here with:
 - **Docker Compose app healthcheck** — `docker compose` waits for `/api/health?minimal=1` before marking the app healthy
 - **Health status helper** — shared `getHealthStatus()` powers `/api/health`; readiness warns when `FORGEGUARD_EXECUTOR=insforge` lacks credentials
 - **Readiness status helper** — shared `getReadinessStatus()` powers `/api/readiness`; warns when InsForge executor is configured but unreachable
+- **Dashboard connection status** — reflects Postgres, degraded readiness, and InsForge states from `/api/health`
+- **API version field** — `/api/health` and `/api/readiness` include `version` from `package.json`
 - **Turbopack workspace root** — pin project root in `next.config.js` so `npm run dev` does not infer a parent lockfile directory
 - **Postgres quick start** — align Docker Compose docs with root `docker-compose.yml` credentials
 

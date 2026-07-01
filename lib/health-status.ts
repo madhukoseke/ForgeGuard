@@ -6,6 +6,7 @@ import {
 import { resolveInsforgeReachable } from "./health-probe";
 import { isLimrunConfigured } from "./limrun";
 import { getReadinessStatus } from "./readiness-status";
+import { getAppVersion } from "./version";
 
 export async function getHealthStatus() {
   const readiness = await getReadinessStatus();
@@ -26,6 +27,7 @@ export async function getHealthStatus() {
       readiness.remote_insforge_reachable,
     ),
     strict: readiness.strict,
+    version: getAppVersion(),
     branch_cli: isBranchCliEnabled(),
     replicas_webhook: Boolean(process.env.REPLICAS_WEBHOOK_SECRET?.trim()),
     limrun: isLimrunConfigured(),

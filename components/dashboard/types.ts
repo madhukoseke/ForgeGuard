@@ -8,11 +8,17 @@ export interface DemoOpMeta {
 }
 
 export interface HealthStatus {
-  store: "memory" | "insforge";
+  store: "memory" | "postgres" | "insforge";
+  backend: "memory" | "postgres" | "insforge";
+  ready: boolean;
+  warnings?: string[];
+  store_reachable?: boolean;
+  backend_reachable?: boolean;
   executor: "simulated" | "insforge" | "migrations";
   insforge_configured: boolean;
   insforge_reachable: boolean;
-  branch_cli: boolean;
+  branch_cli?: boolean;
+  version?: string;
 }
 
 export interface Toast {
