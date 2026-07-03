@@ -11,6 +11,7 @@ import type {
   DemoOpMeta,
   HealthStatus,
 } from "@/components/dashboard/types";
+import { healthPollIntervalMs } from "@/components/dashboard/health-poll";
 
 const EMPTY_SUMMARY: ActionSummary = {
   total: 0,
@@ -106,13 +107,10 @@ export function useDashboardData() {
   }, [refresh]);
 
   useEffect(() => {
-    const pollMs =
-      health?.store === "insforge" && health?.insforge_reachable === false
-        ? 10_000
-        : 4_000;
+    const pollMs = healthPollIntervalMs(health);
     const actionsTimer = setInterval(() => void refresh(), pollMs);
     return () => clearInterval(actionsTimer);
-  }, [refresh, health?.store, health?.insforge_reachable]);
+  }, [refresh, health]);
 
   const runOp = useCallback(
     async (index: number): Promise<string | null> => {
