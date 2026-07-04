@@ -11,7 +11,7 @@ import type {
   DemoOpMeta,
   HealthStatus,
 } from "@/components/dashboard/types";
-import { healthPollIntervalMs } from "@/components/dashboard/health-poll";
+import { healthFetchIntervalMs, healthPollIntervalMs } from "@/components/dashboard/health-poll";
 
 const EMPTY_SUMMARY: ActionSummary = {
   total: 0,
@@ -101,10 +101,20 @@ export function useDashboardData() {
         .then((d) => setHealth(d as HealthStatus))
         .catch(() => {});
 
-    loadHealth();
-    const healthTimer = setInterval(loadHealth, 15_000);
-    return () => clearInterval(healthTimer);
+    void loadHealth();
   }, [refresh]);
+
+  useEffect(() => {
+    const loadHealth = () =>
+      fetch("/api/health")
+        .then((r) => r.json())
+        .then((d) => setHealth(d as HealthStatus))
+        .catch(() => {});
+
+    const intervalMs = healthFetchIntervalMs(health);
+    const healthTimer = setInterval(() => void loadHealth(), intervalMs);
+    return () => clearInterval(healthTimer);
+  }, [health]);
 
   useEffect(() => {
     const pollMs = healthPollIntervalMs(health);
