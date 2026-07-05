@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { getHealthStatus } from "@/lib/health-status";
+import { forgeguardVersionHeaders } from "@/lib/version-headers";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   if (url.searchParams.get("minimal") === "1") {
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: forgeguardVersionHeaders() });
   }
 
-  return NextResponse.json(await getHealthStatus());
+  return NextResponse.json(await getHealthStatus(), {
+    headers: forgeguardVersionHeaders(),
+  });
 }

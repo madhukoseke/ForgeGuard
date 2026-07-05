@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { ActionSummary } from "@/lib/action-summary";
 import { DEFAULT_ACTIONS_LIMIT } from "@/lib/list-params";
 import type { AgentAction } from "@/lib/types";
+import { fetchHealthStatus } from "@/components/dashboard/fetch-health";
 import { fetchWithOperatorToken } from "@/components/dashboard/fetch";
 import type {
   ActionsPagination,
@@ -88,6 +89,11 @@ export function useDashboardData() {
     });
   }, [fetchActions, loadingMore, pagination]);
 
+  const refreshHealth = useCallback(async () => {
+    const status = await fetchHealthStatus();
+    if (status) setHealth(status);
+  }, []);
+
   useEffect(() => {
     void refresh();
     fetch("/api/demo")
@@ -95,26 +101,14 @@ export function useDashboardData() {
       .then((d) => setOps(d.ops ?? []))
       .catch(() => {});
 
-    const loadHealth = () =>
-      fetch("/api/health")
-        .then((r) => r.json())
-        .then((d) => setHealth(d as HealthStatus))
-        .catch(() => {});
-
-    void loadHealth();
-  }, [refresh]);
+    void refreshHealth();
+  }, [refresh, refreshHealth]);
 
   useEffect(() => {
-    const loadHealth = () =>
-      fetch("/api/health")
-        .then((r) => r.json())
-        .then((d) => setHealth(d as HealthStatus))
-        .catch(() => {});
-
     const intervalMs = healthFetchIntervalMs(health);
-    const healthTimer = setInterval(() => void loadHealth(), intervalMs);
+    const healthTimer = setInterval(() => void refreshHealth(), intervalMs);
     return () => clearInterval(healthTimer);
-  }, [health]);
+  }, [health, refreshHealth]);
 
   useEffect(() => {
     const pollMs = healthPollIntervalMs(health);
