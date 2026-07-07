@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ActionSummary } from "@/lib/action-summary";
 import { DEFAULT_ACTIONS_LIMIT } from "@/lib/list-params";
 import type { AgentAction } from "@/lib/types";
@@ -12,7 +12,7 @@ import type {
   DemoOpMeta,
   HealthStatus,
 } from "@/components/dashboard/types";
-import { healthFetchIntervalMs, healthPollIntervalMs } from "@/components/dashboard/health-poll";
+import { healthFetchIntervalMs, healthPollIntervalMs, isHealthDegraded } from "@/components/dashboard/health-poll";
 
 const EMPTY_SUMMARY: ActionSummary = {
   total: 0,
@@ -34,6 +34,7 @@ export function useDashboardData() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const prevHealthRef = useRef<HealthStatus | null>(null);
 
   const applyResponse = useCallback((data: ActionsResponse, append: boolean) => {
     const rows = data.actions ?? [];
@@ -115,6 +116,14 @@ export function useDashboardData() {
     const actionsTimer = setInterval(() => void refresh(), pollMs);
     return () => clearInterval(actionsTimer);
   }, [refresh, health]);
+
+  useEffect(() => {
+    const prev = prevHealthRef.current;
+    if (prev && isHealthDegraded(prev) && !isHealthDegraded(health)) {
+      void refresh();
+    }
+    prevHealthRef.current = health;
+  }, [health, refresh]);
 
   const runOp = useCallback(
     async (index: number): Promise<string | null> => {

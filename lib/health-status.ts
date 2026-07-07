@@ -13,6 +13,7 @@ export async function getHealthStatus() {
   const configured = getInsForgeConfig() !== null;
 
   return {
+    ok: readiness.ready,
     store: readiness.store,
     backend: readiness.backend,
     ready: readiness.ready,
