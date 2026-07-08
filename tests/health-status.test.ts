@@ -23,6 +23,7 @@ test("getHealthStatus reports ready memory demo defaults", async () => {
   assert.equal(status.store, "memory");
   assert.equal(status.backend, "memory");
   assert.equal(status.ready, true);
+  assert.equal(status.ok, true);
   assert.equal(status.store_reachable, true);
   assert.equal(status.backend_reachable, true);
   assert.equal(status.version, getAppVersion());

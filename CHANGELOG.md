@@ -76,6 +76,7 @@ Each guarded operation that reaches `applied` status should appear here with:
 - **Dashboard polling** — slows action refresh when health is degraded or Postgres/InsForge is unreachable; health fetch interval adapts too
 - **Health fetch helper** — shared `fetchHealthStatus()` for the dashboard; `/api/health` and `/api/readiness` send `X-ForgeGuard-Version`
 - **Health probes** — `/api/health` exposes `ok` and supports `?minimal=ready` for config-only readiness; dashboard refreshes actions when health recovers
+- **Readiness response** — `/api/readiness` exposes `ok`, hides internal reachability fields, and degraded dashboard status is clickable to retry
 - **Turbopack workspace root** — pin project root in `next.config.js` so `npm run dev` does not infer a parent lockfile directory
 - **Postgres quick start** — align Docker Compose docs with root `docker-compose.yml` credentials
 

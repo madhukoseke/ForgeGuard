@@ -20,3 +20,10 @@ export async function getReadinessStatus() {
     version: getAppVersion(),
   };
 }
+
+export type ReadinessStatus = Awaited<ReturnType<typeof getReadinessStatus>>;
+
+export function toReadinessResponse(status: ReadinessStatus) {
+  const { remote_insforge_reachable: _remote, ...publicStatus } = status;
+  return { ...publicStatus, ok: publicStatus.ready };
+}

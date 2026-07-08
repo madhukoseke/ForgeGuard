@@ -73,8 +73,8 @@ paths:
       parameters:
         - name: minimal
           in: query
-          schema: { type: string, enum: ["1"] }
-          description: Returns `{ ok: true }` for process liveness probes
+          schema: { type: string, enum: ["1", "ready"] }
+          description: "`1` returns process liveness; `ready` returns config-only readiness"
       responses:
         "200":
           description: Health payload
@@ -85,6 +85,7 @@ paths:
                 properties:
                   store: { type: string, enum: [memory, postgres, insforge] }
                   backend: { type: string, enum: [memory, postgres, insforge] }
+                  ok: { type: boolean }
                   ready: { type: boolean }
                   warnings: { type: array, items: { type: string } }
                   store_reachable: { type: boolean }
@@ -108,4 +109,5 @@ paths:
                   warnings: { type: array, items: { type: string } }
                   store: { type: string }
                   backend: { type: string }
+                  ok: { type: boolean }
                   version: { type: string }

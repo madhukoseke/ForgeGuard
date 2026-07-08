@@ -20,7 +20,7 @@ export function parseHealthStatus(data: unknown): HealthStatus | null {
   return {
     store: row.store as HealthStatus["store"],
     backend: row.backend as HealthStatus["backend"],
-    ready: typeof row.ready === "boolean" ? row.ready : true,
+    ready: typeof row.ready === "boolean" ? row.ready : typeof row.ok === "boolean" ? row.ok : true,
     warnings: Array.isArray(row.warnings)
       ? row.warnings.filter((warning): warning is string => typeof warning === "string")
       : undefined,

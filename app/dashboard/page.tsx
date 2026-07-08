@@ -31,6 +31,7 @@ export default function Dashboard() {
     loading,
     loadingMore,
     refresh,
+    refreshHealth,
     loadMore,
     runOp,
     tool,
@@ -100,7 +101,13 @@ export default function Dashboard() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 pb-32 pt-24">
-      <ConnectionStatus health={health} />
+      <ConnectionStatus
+        health={health}
+        onRefresh={() => {
+          void refreshHealth();
+          void refresh();
+        }}
+      />
       <DashboardStats summary={summary} />
 
       <SimulatorSection

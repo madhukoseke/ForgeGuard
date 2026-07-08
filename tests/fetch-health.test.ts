@@ -34,3 +34,15 @@ test("parseHealthStatus normalizes warnings and defaults ready to true", () => {
   assert.equal(status?.ready, true);
   assert.deepEqual(status?.warnings, ["demo warning"]);
 });
+
+test("parseHealthStatus accepts ok as a ready fallback", () => {
+  const status = parseHealthStatus({
+    store: "memory",
+    backend: "memory",
+    executor: "simulated",
+    insforge_configured: false,
+    insforge_reachable: false,
+    ok: false,
+  });
+  assert.equal(status?.ready, false);
+});

@@ -187,6 +187,7 @@ export function useDashboardData() {
     loading,
     loadingMore,
     refresh,
+    refreshHealth,
     loadMore,
     runOp,
     tool,
