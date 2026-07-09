@@ -41,7 +41,7 @@ Rendered overview (same story as the Excalidraw source):
 
 **Why split:** data ops share policy, bidirectional injection scanning, and SQL backends. Backend-change ops need InsForge admin REST, branch/preview enrichment, and compensating-SQL snapshots that are not part of the MCP data path. Both write the same audit store (`agent_actions`).
 
-MCP tools today are **data-only** (`query`, `execute`, `list_tables`, `describe_table`, `get_action_status`). Backend-change ops are HTTP-only — see [API_STABILITY.md](./API_STABILITY.md).
+MCP tools: `query`, `execute`, `propose_operation` (backend-change + optional data.*), `list_tables`, `describe_table`, `list_actions`, `get_action_status`. Approve/reject/rollback remain HTTP/dashboard — see [API_STABILITY.md](./API_STABILITY.md).
 
 ---
 

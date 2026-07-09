@@ -88,10 +88,12 @@ Copy from [`forgeguard.config.example.json`](../forgeguard.config.example.json).
 |------|---------|
 | `query` | Read-only SQL with policy + injection scan |
 | `execute` | Writes/DDL with guard + approval flow |
+| `propose_operation` | Backend-change ops (`db.migration`, `function.deploy`, `storage.config`, `auth.config`); also accepts `data.query` / `data.execute` for HTTP parity |
 | `list_tables` / `describe_table` | Schema introspection |
+| `list_actions` | Recent audit trail (optional `status` / `limit` / `offset`) |
 | `get_action_status` | Poll pending op outcome |
 
-Backend-change ops (`db.migration`, `function.deploy`, `storage.config`, `auth.config`) are not MCP tools — call `POST /api/guard/op` (or the dashboard). The audit trail is `GET /api/actions`.
+Approve / reject / rollback remain operator actions via the dashboard or `PATCH /api/actions/[id]` (not MCP tools).
 
 See [STABLE_0.3.0.md](./STABLE_0.3.0.md) for stability notes.
 

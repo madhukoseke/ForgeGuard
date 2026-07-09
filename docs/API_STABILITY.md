@@ -4,14 +4,14 @@
 
 | Type | MCP | HTTP |
 |------|-----|------|
-| `data.query` | `query` | `POST /api/guard/query` |
-| `data.execute` | `execute` | `POST /api/guard/execute` |
-| `db.migration` | — (HTTP only) | `POST /api/guard/op` |
-| `function.deploy` | — (HTTP only) | `POST /api/guard/op` |
-| `storage.config` | — (HTTP only) | `POST /api/guard/op` |
-| `auth.config` | — (HTTP only) | `POST /api/guard/op` |
+| `data.query` | `query` (also `propose_operation`) | `POST /api/guard/query` · `/op` |
+| `data.execute` | `execute` (also `propose_operation`) | `POST /api/guard/execute` · `/op` |
+| `db.migration` | `propose_operation` | `POST /api/guard/op` |
+| `function.deploy` | `propose_operation` | `POST /api/guard/op` |
+| `storage.config` | `propose_operation` | `POST /api/guard/op` |
+| `auth.config` | `propose_operation` | `POST /api/guard/op` |
 
-Schema introspection MCP tools (`list_tables`, `describe_table`) and `get_action_status` are stable. Audit listing is `GET /api/actions` (not an MCP tool).
+Schema introspection (`list_tables`, `describe_table`), `list_actions`, and `get_action_status` are stable MCP tools. Audit listing is also `GET /api/actions`. Approve/reject/rollback remain HTTP/dashboard only.
 
 ## Stable response fields (guard)
 

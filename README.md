@@ -45,7 +45,7 @@ Agents connect to ForgeGuard as their database tool (MCP). Every query and every
 3. **Postgres or InsForge** — [POSTGRES_QUICKSTART.md](./docs/POSTGRES_QUICKSTART.md) · [INSFORGE_QUICKSTART.md](./docs/INSFORGE_QUICKSTART.md)
 4. **Deploy** — [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
-**Stable vs experimental:** MCP data tools (`query`, `execute`, introspection, `get_action_status`), HTTP guard/actions routes, and the deterministic pipeline are stable. InsForge live executor, partner webhooks, and LLM injection scan are experimental — see [docs/STABLE_0.3.0.md](./docs/STABLE_0.3.0.md).
+**Stable vs experimental:** MCP tools (`query`, `execute`, `propose_operation`, introspection, `list_actions`, `get_action_status`), HTTP guard/actions routes, and the deterministic pipeline are stable. InsForge live executor, partner webhooks, and LLM injection scan are experimental — see [docs/STABLE_0.3.0.md](./docs/STABLE_0.3.0.md).
 
 ---
 
@@ -101,7 +101,7 @@ The Next.js app is the operator dashboard and HTTP chokepoint; the MCP server is
 
 ## Quick start: MCP server
 
-> **Stable in 0.3.x:** MCP `query` / `execute` / `list_tables` / `describe_table` / `get_action_status`. Backend-change ops use `POST /api/guard/op` (HTTP). Details: [docs/STABLE_0.3.0.md](./docs/STABLE_0.3.0.md).
+> **Stable in 0.3.x:** MCP `query` / `execute` / `propose_operation` / `list_tables` / `describe_table` / `list_actions` / `get_action_status`. Backend-change ops also accept `POST /api/guard/op`. Details: [docs/STABLE_0.3.0.md](./docs/STABLE_0.3.0.md).
 
 No credentials required — the default backend is an in-memory simulation with a seeded `users` table.
 
@@ -170,8 +170,12 @@ Capture fresh screenshots: `npm run dev` then `npm run capture:screenshots`.
 |------|--------------|
 | `query` | Single read-only statement. Policy-checked, row-capped, results masked + injection-scanned. |
 | `execute` | Write/DDL. Classified; safe ops apply instantly, risky ops are **held** and return a pending `action_id` + safer alternative. |
+| `propose_operation` | Backend-change ops (`db.migration`, `function.deploy`, `storage.config`, `auth.config`) through the same pipeline as `POST /api/guard/op`. Also accepts `data.query` / `data.execute`. |
 | `list_tables` / `describe_table` | Schema introspection (also audited). |
+| `list_actions` | Recent audit trail (optional `status`, `limit`, `offset`). |
 | `get_action_status` | Poll whether a held op was approved, rejected, applied, or rolled back. |
+
+Approve / reject / rollback: operator dashboard or `PATCH /api/actions/[id]`.
 
 Example `execute` response for `DROP TABLE users;`:
 
@@ -371,7 +375,7 @@ vercel link && vercel --prod
 
 **Do not** run SQL, apply migrations, deploy functions, or change storage/auth config directly against the database.
 
-1. Use the ForgeGuard MCP tools (`query`, `execute`) — or POST to **`/api/guard/op`**
+1. Use the ForgeGuard MCP tools (`query`, `execute`, `propose_operation`) — or POST to **`/api/guard/op`**
 2. If the response is **`applied`** — proceed
 3. If **`pending`** — stop, surface `rationale` and `safer_alternative` to the operator, and poll `get_action_status` for the outcome. Never retry a held statement verbatim.
 
@@ -415,6 +419,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and [doc
 
 | Doc | Description |
 |-----|-------------|
+| [V2.md](./docs/V2.md) | Product v2 phases: MCP parity → fail-closed → identity → ops UX → stronger guard → library API |
+| [ROADMAP.md](./docs/ROADMAP.md) | Near-term checklist (points at V2) |
 | [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Mental model: two guards, three axes, InsForge layering |
 | [STABLE_0.3.0.md](./docs/STABLE_0.3.0.md) | Stable vs experimental surfaces |
 | [THREAT_MODEL.md](./docs/THREAT_MODEL.md) | Limitations and security expectations |
@@ -438,7 +444,7 @@ Contributor map: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md). Shipped UI is `
 ```
 mcp/
   cli.ts                    forgeguard-mcp entry (stdio + Streamable HTTP)
-  server.ts                 MCP tools → data-guard pipeline
+  server.ts                 MCP tools → data-guard + propose_operation / list_actions
 
 lib/
   backends/                 DataBackend adapters: memory · postgres · insforge

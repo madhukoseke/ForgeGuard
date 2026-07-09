@@ -88,7 +88,7 @@ export async function guardOp(op: ProposedOp): Promise<GuardResult> {
     pr_urls: null,
     preview_url: null,
     injection_findings: injectionFindings.length > 0 ? injectionFindings : null,
-    transport: "http",
+    transport: op.transport ?? "http",
   };
 
   await getStore().insert(action);

@@ -164,7 +164,7 @@ export function proposedOpToDataInput(op: ProposedOp): DataRequestFields {
     session_id: op.session_id,
     note: op.note,
     max_rows: op.max_rows,
-    transport: "http",
+    transport: op.transport ?? "http",
   };
 }
 

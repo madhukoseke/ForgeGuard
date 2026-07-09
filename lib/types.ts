@@ -47,7 +47,7 @@ export interface OpContext {
   environment?: string;
 }
 
-// The payload an agent POSTs to the chokepoint (/api/guard/op).
+// The payload an agent POSTs to the chokepoint (/api/guard/op) or proposes via MCP.
 export interface ProposedOp {
   operation_type: ActionType;
   statement: string;
@@ -60,6 +60,8 @@ export interface ProposedOp {
   note?: string;
   /** Per-call row cap for data.query (clamped to policy max). */
   max_rows?: number;
+  /** How the op reached ForgeGuard (defaults to http when omitted). */
+  transport?: Transport;
 }
 
 // The structured judgment produced by Layer 1 + Layer 2.

@@ -6,8 +6,8 @@ These are covered by tests, documented in README, and intended for production us
 
 | Surface | Notes |
 |---------|-------|
-| **MCP tools** | `query`, `execute`, `list_tables`, `describe_table`, `get_action_status` |
-| **HTTP backend ops** | `POST /api/guard/op` for `db.migration`, `function.deploy`, `storage.config`, `auth.config` |
+| **MCP tools** | `query`, `execute`, `propose_operation`, `list_tables`, `describe_table`, `list_actions`, `get_action_status` |
+| **HTTP backend ops** | `POST /api/guard/op` for `db.migration`, `function.deploy`, `storage.config`, `auth.config` (same pipeline as MCP `propose_operation`) |
 | **HTTP endpoints** | `/api/guard/op`, `/api/guard/query`, `/api/guard/execute`, `/api/actions`, `/api/actions/[id]` |
 | **Config file** | `forgeguard.config.json` read-side policy (denied tables, masks, row caps) |
 | **Environment variables** | See README configuration table |
