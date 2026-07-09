@@ -1,4 +1,4 @@
-// Layer 2 — the risk-classifier (§6 of the prep kit). This is the core IP.
+// Layer 2 — the risk-classifier (see docs/ARCHITECTURE.md). This is the core IP.
 // Calls the InsForge Model Gateway (OpenAI-compatible) requesting JSON mode.
 // If no gateway is configured OR the call fails, it gracefully degrades to a
 // deterministic heuristic built on Layer 1 — so the demo NEVER hard-fails.

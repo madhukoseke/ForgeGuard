@@ -3,6 +3,22 @@ import type { Severity } from "@/lib/types";
 export const DEMO_STEP_COUNT = 6;
 export const OPERATOR_TOKEN_KEY = "forgeguard_operator_token";
 
+/** Human-readable beats for the cinematic demo (aligned with docs/DEMO_SCRIPT.md). */
+export const DEMO_STEP_LABELS: Record<number, string> = {
+  0: "Seeding baseline",
+  1: "Blocking destructive change",
+  2: "Approving safer alternative",
+  3: "Rolling back",
+  4: "Auto-allowing safe op",
+  5: "Holding critical DROP",
+  6: "Rejecting critical op",
+};
+
+export function demoStepLabel(step: number): string {
+  return DEMO_STEP_LABELS[step] ?? `Step ${step}`;
+}
+
+
 export const SEV_LABEL: Record<Severity, string> = {
   safe: "safe",
   low: "low",

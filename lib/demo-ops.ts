@@ -1,5 +1,6 @@
-// Canned ops for the §9 demo and quick manual testing. The pre-seeded `users`
-// table has ~5 rows and a `last_login` column the demo targets.
+// Canned ops for the cinematic demo (docs/DEMO_SCRIPT.md) and quick manual
+// testing. The pre-seeded `users` table has ~5 rows and a `last_login` column
+// the demo targets.
 
 import { ProposedOp } from "./types";
 

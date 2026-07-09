@@ -1,10 +1,12 @@
-# Design reference prototypes
+# Design reference prototypes — UNMAINTAINED
 
-> **Warning:** Code in this folder is **not maintained** for production use. Dependencies are stale and UX may not match the shipped app. Use the [root dashboard](/dashboard) and [docs/STABLE_0.3.0.md](../STABLE_0.3.0.md) instead.
+> **Do not use this folder as the app.** It is a historical UI sandbox with its own Next.js tree, stale dependencies, and duplicate component names (`Dashboard.tsx`, `ActionCard.tsx`). It is **not** the shipped product, is excluded from the root TypeScript build, and is listed as experimental in [STABLE_0.3.0.md](../STABLE_0.3.0.md).
+>
+> **Shipped app:** repo-root [`app/`](../../app/) and [`components/dashboard/`](../../components/dashboard/) — open `/dashboard` after `npm run dev`.
 
-This folder holds **UI reference implementations** for ForgeGuard. They are not part of the production app and are excluded from the root TypeScript build (`tsconfig.json`).
+This folder holds early UX explorations only. Contributors should ignore `docs/design/ForgeGuard/**` when searching for production code.
 
-## Contents
+## Contents (reference only)
 
 | Path | Description |
 |------|-------------|
@@ -13,15 +15,14 @@ This folder holds **UI reference implementations** for ForgeGuard. They are not 
 
 ## Production app
 
-The shipped demo lives in the repo root:
+| Surface | Location |
+|---------|----------|
+| Dashboard | `/dashboard` — simulator, **Run demo**, approve/reject/rollback |
+| Demo API | `POST /api/demo` |
+| E2E | `npm run demo:e2e` |
+| Architecture | [../ARCHITECTURE.md](../ARCHITECTURE.md) |
 
-- Dashboard: `/dashboard` — simulator, **Run demo** (6 scenes), approve/reject/rollback
-- Demo API: `POST /api/demo` — reset, seed, run canned ops
-- E2E: `npm run demo:e2e`
-
-Use the root app for development, CI, and distribution. These prototypes are kept for design history and comparison only.
-
-## Running the Next.js prototype (optional)
+## Running the Next.js prototype (optional, not supported)
 
 ```bash
 cd docs/design/ForgeGuard/nextjs
@@ -29,4 +30,4 @@ npm install
 npm run dev
 ```
 
-This uses its own `package.json` and in-memory store; it does not share the root app's InsForge integration.
+This uses its own `package.json` and in-memory store; it does not share the root app's guard pipeline or InsForge integration.

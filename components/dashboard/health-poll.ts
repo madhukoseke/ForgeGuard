@@ -79,6 +79,8 @@ export function connectionState(health: HealthStatus | null): ConnectionState {
   return {
     label: "Demo",
     dot: "bg-subtle",
-    title: "Offline demo" + versionSuffix,
+    title:
+      "Zero-credential demo mode — in-memory store and simulated executor (expected when no Postgres/InsForge is configured)" +
+      versionSuffix,
   };
 }

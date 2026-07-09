@@ -53,7 +53,7 @@ See [POSTGRES_QUICKSTART.md](./POSTGRES_QUICKSTART.md) for MCP wiring and least-
 
 Configured in [`next.config.js`](../next.config.js):
 
-- `Content-Security-Policy` (hash-allowed inline theme script)
+- `Content-Security-Policy` (`'unsafe-inline'` for Next.js hydration + theme init hash; tighten with nonces later if needed)
 - `Strict-Transport-Security` (production)
 - `Permissions-Policy`
 - `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`

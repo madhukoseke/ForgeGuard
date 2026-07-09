@@ -1,15 +1,23 @@
 const FAQS = [
   {
+    q: "What is ForgeGuard?",
+    a: "An open-source guardrail layer between AI agents and your data. Agents talk to your database only through ForgeGuard — every query and write is audited, scanned for injection, and held for approval when it's destructive.",
+  },
+  {
+    q: "How do agents connect?",
+    a: "Point Claude Desktop, Cursor, or any MCP client at the forgeguard-mcp server (query / execute tools). HTTP-only agents can call POST /api/guard/query, /api/guard/execute, or /api/guard/op instead.",
+  },
+  {
     q: "Do I need InsForge?",
-    a: "No. The dashboard works offline with a simulated executor. Connect InsForge when you're ready for live execution.",
+    a: "No. Any Postgres works, and the dashboard runs with a zero-credential in-memory demo. InsForge is an optional backend when you want live migrations, functions, storage, and auth config guarded the same way.",
   },
   {
     q: "How does rollback work?",
-    a: "ForgeGuard captures inverse SQL before executing schema changes. Rolling back replays that statement.",
+    a: "ForgeGuard captures inverse SQL before applying schema changes. Rolling back from the dashboard replays that compensating statement.",
   },
   {
     q: "What requires approval?",
-    a: "Severity, blast radius, and action type. DROP statements and high-risk schema changes always queue for review.",
+    a: "Severity, blast radius, and action type. DROP statements and other high-risk changes always queue for review; safe reads and bounded writes can auto-allow.",
   },
 ];
 

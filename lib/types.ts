@@ -123,7 +123,7 @@ export function maxSeverity(a: Severity, b: Severity): Severity {
   return severityRank(a) >= severityRank(b) ? a : b;
 }
 
-// requires_approval is true for medium and above (§5/§6 of the prep kit).
+// requires_approval is true for medium and above (see docs/ARCHITECTURE.md).
 export function computeRequiresApproval(severity: Severity): boolean {
   return severityRank(severity) >= severityRank("medium");
 }

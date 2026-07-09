@@ -1,22 +1,22 @@
 const ITEMS = [
   {
-    title: "Classify every operation",
-    body: "Severity and blast radius are scored before anything runs.",
+    title: "Classify and hold destructive ops",
+    body: "DROP, TRUNCATE, and other high-blast-radius changes get a severity score, rationale, and a concrete safer alternative — then wait for a human.",
   },
   {
-    title: "Approve what matters",
-    body: "High-risk changes wait for a human. Everything else flows through.",
+    title: "Scan for prompt injection both ways",
+    body: "Inbound tool args are checked before they reach your database. Query results are scanned and poisoned cells redacted before they return to the agent.",
   },
   {
-    title: "Roll back instantly",
-    body: "Inverse SQL snapshots let you undo approved changes in one step.",
+    title: "Approve, reject, or roll back",
+    body: "Every request lands in an audit trail. Approve with the safer fix, reject outright, or undo an applied change with one-click compensating SQL.",
   },
 ];
 
 const STEPS = [
-  "Agent submits an operation",
-  "ForgeGuard scores the risk",
-  "Safe ops run · risky ops queue for review",
+  "Agent connects to ForgeGuard as its database tool (MCP or HTTP)",
+  "Guard pipeline: policy → injection scan → classify → apply or hold",
+  "Operator reviews pending ops — approve, reject, or roll back",
 ];
 
 const DELAYS = ["", "animate-fade-up-delay-1", "animate-fade-up-delay-2"] as const;

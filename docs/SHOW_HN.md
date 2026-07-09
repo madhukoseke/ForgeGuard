@@ -1,6 +1,6 @@
 # Show HN — ForgeGuard
 
-**Title:** Show HN: ForgeGuard – a Postgres schema guard that reads like a code review
+**Title:** Show HN: ForgeGuard – the seatbelt between AI agents and your database
 
 **URL:** https://github.com/madhukoseke/ForgeGuard
 
@@ -10,19 +10,21 @@
 
 An AI agent can ship a full-stack app in minutes — and drop your production table in seconds.
 
-**ForgeGuard** is a control plane for agent-built backends on [InsForge](https://insforge.dev). Every proposed migration, function deploy, storage change, or auth config passes through:
+**ForgeGuard** is the open-source guardrail layer between AI agents and your data. Agents connect via MCP (or HTTP) as their database tool. Every query and write passes through:
 
-1. **Deterministic prefilter** — DROP TABLE, unconditional DELETE, RLS disable, public buckets
-2. **LLM classifier** — severity, blast radius, safer alternative
-3. **Operator gate** — approve, reject, or one-click rollback
+1. **Policy + injection scan** — denied tables, masked PII, inbound/outbound prompt-injection checks
+2. **Deterministic prefilter + classifier** — DROP/TRUNCATE/unconditional DELETE held with a safer alternative
+3. **Operator gate** — approve, reject, or one-click rollback from the dashboard
+
+Works with any Postgres, [InsForge](https://insforge.dev), or a zero-credential in-memory demo.
 
 ### Demo flow (90 seconds)
 
-Replicas proposes `ALTER TABLE users DROP COLUMN last_login` on a 5-row table.
+An agent proposes `ALTER TABLE users DROP COLUMN last_login`.
 
-- ForgeGuard returns **202 pending** with rationale and a soft-delete alternative
-- Operator reviews on the dashboard (optional Limrun mobile preview)
-- Approve → InsForge applies with compensating rollback snapshot
+- ForgeGuard returns **pending** with rationale and a soft-delete alternative
+- Operator reviews on the dashboard
+- Approve → apply with compensating rollback snapshot
 - Rollback → inverse SQL reverts the change
 
 ### Try it locally (no credentials)
@@ -32,15 +34,17 @@ git clone https://github.com/madhukoseke/ForgeGuard.git
 cd ForgeGuard && npm install && npm run dev
 ```
 
-Open http://localhost:3000 — landing page + operator dashboard with simulated ops.
+Open http://localhost:3000/dashboard — press **D** for the cinematic demo.
 
 ```bash
-npm run e2e   # full approve / reject / rollback flow
+npm run demo:e2e   # headless verification of the same flow
 ```
+
+Wire an agent: [docs/MCP_SETUP.md](./MCP_SETUP.md)
 
 ### Stack
 
-Next.js 15 · InsForge REST · optional Replicas / Limrun / Memoir hooks
+Next.js · MCP server (`forgeguard-mcp`) · Postgres / InsForge / memory backends
 
 Would love feedback on the guard pipeline and what ops you'd want gated next.
 
@@ -48,6 +52,6 @@ Would love feedback on the guard pipeline and what ops you'd want gated next.
 
 ## First comment (optional)
 
-Happy to walk through the architecture or live demo. The guard chokepoint is a single endpoint: `POST /api/guard/op`. Agents should never touch InsForge directly.
+Happy to walk through the architecture or live demo. Data path: MCP `query` / `execute` (or `POST /api/guard/query|execute`). Backend-change ops: `POST /api/guard/op`. Agents should never talk to the database directly.
 
-Integration guides: [docs/REPLICAS.md](./REPLICAS.md) · [docs/MEMOIR.md](./MEMOIR.md)
+Start here: demo → [MCP setup](./MCP_SETUP.md) → [Postgres](./POSTGRES_QUICKSTART.md) / [InsForge](./INSFORGE_QUICKSTART.md) → [Deploy](./DEPLOYMENT.md)

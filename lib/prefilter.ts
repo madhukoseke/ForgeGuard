@@ -1,4 +1,4 @@
-// Layer 1 — deterministic pre-filter (§5 of the prep kit).
+// Layer 1 — deterministic pre-filter (see docs/ARCHITECTURE.md).
 // Instant, free, reliable. Runs BEFORE the LLM. The LLM (Layer 2) only adds
 // nuance + the safer alternative. These rules must be correct for the demo
 // inputs and the obvious production killers; they intentionally stay simple.

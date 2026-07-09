@@ -4,8 +4,14 @@ const path = require("node:path");
 const isProd =
   process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
 
-const THEME_SCRIPT_HASH =
-  "'sha256-ekCvuCw1VnbgZASal0w7wUBKQJYoGAhOykIvKMNabhc='";
+// Next.js (Turbopack/App Router) injects bootstrap inline scripts. A hash or
+// nonce in script-src makes browsers ignore 'unsafe-inline', which blocks
+// hydration — Run demo / D do nothing and Actions stay on skeletons.
+// Prefer 'unsafe-inline' (+ 'unsafe-eval' in dev) until a nonce-based CSP
+// covers both the theme init script and Next runtime.
+const scriptSrc = isProd
+  ? "script-src 'self' 'unsafe-inline'"
+  : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -19,7 +25,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      `script-src 'self' ${THEME_SCRIPT_HASH}`,
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",

@@ -44,6 +44,7 @@ test("connectionState includes version in tooltip", () => {
   const state = connectionState({ ...base, version: "0.3.0" });
   assert.match(state.title, /v0\.3\.0/);
   assert.equal(state.label, "Demo");
+  assert.match(state.title, /Zero-credential demo mode/);
 });
 
 test("connectionState shows degraded label with warnings", () => {

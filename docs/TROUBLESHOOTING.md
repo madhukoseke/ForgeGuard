@@ -81,6 +81,14 @@ npm run fix:npm-cache
 npm_config_cache=/tmp/forgeguard-npm-cache npm install
 ```
 
+## Run demo / dashboard buttons do nothing
+
+**Symptom:** `/dashboard` renders (stats, Simulate, Actions skeletons) but **Run demo**, `D`, and op rows never respond; browser console shows Content-Security-Policy `script-src` violations and/or `Expected a request ID to be defined for the document via self.__next_r`.
+
+**Cause:** A hash-only CSP blocked Next.js hydration scripts, so React never mounted.
+
+**Fix:** Pull the latest `next.config.js` (allows `'unsafe-inline'` for scripts in prod, plus `'unsafe-eval'` in dev). Restart `npm run dev` and hard-refresh the browser.
+
 ## Operator token prompts / 401 on dashboard
 
 **Symptom:** Dashboard cannot load actions; API returns `unauthorized`.

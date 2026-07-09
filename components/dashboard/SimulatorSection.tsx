@@ -1,5 +1,5 @@
 import type { DemoOpMeta } from "./types";
-import { DEMO_STEP_COUNT } from "./utils";
+import { DEMO_STEP_COUNT, demoStepLabel } from "./utils";
 
 interface SimulatorSectionProps {
   ops: DemoOpMeta[];
@@ -26,13 +26,19 @@ export function SimulatorSection({
   onReset,
   onRunOp,
 }: SimulatorSectionProps) {
+  const stepLabel = demoStepLabel(demoStep);
+  const stepProgress =
+    demoStep === 0
+      ? stepLabel
+      : `${stepLabel} · ${Math.min(demoStep, DEMO_STEP_COUNT)}/${DEMO_STEP_COUNT}`;
+
   return (
     <section className="border-t border-border py-16">
       <div className="flex flex-wrap items-center gap-4">
         <h2 className="text-sm font-medium text-muted">Simulate</h2>
         {demoRunning && (
-          <span className="text-xs text-subtle">
-            demo step {demoStep}/{DEMO_STEP_COUNT}
+          <span className="text-xs text-subtle" aria-live="polite">
+            {stepProgress}
           </span>
         )}
         <div className="ml-auto flex flex-wrap gap-4">
@@ -62,6 +68,11 @@ export function SimulatorSection({
           </button>
         </div>
       </div>
+      {demoRunning && (
+        <p className="mt-3 text-sm text-muted" aria-live="polite">
+          {stepLabel}
+        </p>
+      )}
       {(error || pollNote) && (
         <p className="mt-4 rounded-lg bg-danger-muted px-4 py-3 text-sm leading-relaxed text-danger">
           {error ?? pollNote}

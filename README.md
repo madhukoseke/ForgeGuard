@@ -17,6 +17,7 @@ Agents connect to ForgeGuard as their database tool (MCP). Every query and every
 
 ## Contents
 
+- [Start here](#start-here)
 - [What it does](#what-it-does)
 - [What is stable in 0.3.0](#what-is-stable-in-030)
 - [Architecture](#architecture)
@@ -34,6 +35,17 @@ Agents connect to ForgeGuard as their database tool (MCP). Every query and every
 - [Development](#development)
 - [Documentation](#documentation)
 - [Project layout](#project-layout)
+
+---
+
+## Start here
+
+1. **Demo** — `npm run dev` → [localhost:3000/dashboard](http://localhost:3000/dashboard) → press `D` ([DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md))
+2. **Wire MCP** — [docs/MCP_SETUP.md](./docs/MCP_SETUP.md) (Claude Desktop / Cursor / HTTP)
+3. **Postgres or InsForge** — [POSTGRES_QUICKSTART.md](./docs/POSTGRES_QUICKSTART.md) · [INSFORGE_QUICKSTART.md](./docs/INSFORGE_QUICKSTART.md)
+4. **Deploy** — [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
+
+**Stable vs experimental:** MCP data tools (`query`, `execute`, introspection, `get_action_status`), HTTP guard/actions routes, and the deterministic pipeline are stable. InsForge live executor, partner webhooks, and LLM injection scan are experimental — see [docs/STABLE_0.3.0.md](./docs/STABLE_0.3.0.md).
 
 ---
 
@@ -88,6 +100,8 @@ The Next.js app is the operator dashboard and HTTP chokepoint; the MCP server is
 ---
 
 ## Quick start: MCP server
+
+> **Stable in 0.3.x:** MCP `query` / `execute` / `list_tables` / `describe_table` / `get_action_status`. Backend-change ops use `POST /api/guard/op` (HTTP). Details: [docs/STABLE_0.3.0.md](./docs/STABLE_0.3.0.md).
 
 No credentials required — the default backend is an in-memory simulation with a seeded `users` table.
 
@@ -397,8 +411,11 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and [doc
 
 ## Documentation
 
+**Path:** [Demo](./docs/DEMO_SCRIPT.md) → [MCP setup](./docs/MCP_SETUP.md) → [Postgres](./docs/POSTGRES_QUICKSTART.md) / [InsForge](./docs/INSFORGE_QUICKSTART.md) → [Deploy](./docs/DEPLOYMENT.md)
+
 | Doc | Description |
 |-----|-------------|
+| [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Mental model: two guards, three axes, InsForge layering |
 | [STABLE_0.3.0.md](./docs/STABLE_0.3.0.md) | Stable vs experimental surfaces |
 | [THREAT_MODEL.md](./docs/THREAT_MODEL.md) | Limitations and security expectations |
 | [MCP_SETUP.md](./docs/MCP_SETUP.md) | Claude Desktop, Cursor, HTTP transport |
@@ -416,21 +433,25 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and [doc
 
 ## Project layout
 
+Contributor map: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md). Shipped UI is `app/` + `components/` — ignore `docs/design/` (unmaintained prototypes).
+
 ```
 mcp/
   cli.ts                    forgeguard-mcp entry (stdio + Streamable HTTP)
-  server.ts                 MCP tools → guard pipeline
+  server.ts                 MCP tools → data-guard pipeline
 
 lib/
   backends/                 DataBackend adapters: memory · postgres · insforge
-  data-guard.ts             query/execute guard flow (policy → injection → classify → audit)
+  data-guard.ts             query/execute guard (MCP + HTTP data path)
+  guard.ts                  Backend-change ops (db.migration, function/storage/auth)
   injection.ts              Bidirectional prompt-injection scanner
   policy.ts                 Read-side safeguards (forgeguard.config.json)
   prefilter.ts              Layer 1 destructive-SQL rules
   classifier.ts             Layer 2 LLM / heuristic
-  guard.ts                  HTTP chokepoint orchestration
   store.ts / store-postgres.ts  Audit persistence (memory · postgres · insforge)
-  executor.ts               InsForge apply / rollback
+  executor.ts               InsForge apply / rollback (per op type)
+  insforge-executor.ts      Public apply/rollback facade for API routes
+  insforge-client.ts        InsForge admin REST client
 
 app/
   dashboard/page.tsx        Operator UI (Requests + Injection filters)
@@ -441,8 +462,10 @@ app/
   api/demo/                 Demo seed / reset
 
 components/dashboard/       Dashboard UI components
+components/landing/         Marketing landing page
 sql/schema.sql              Postgres schema (InsForge bootstrap)
 forgeguard.config.example.json  Read-side policy template
+docs/ARCHITECTURE.md        Mental model for contributors
 ```
 
 ---

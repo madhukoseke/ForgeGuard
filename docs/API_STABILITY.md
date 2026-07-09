@@ -6,10 +6,12 @@
 |------|-----|------|
 | `data.query` | `query` | `POST /api/guard/query` |
 | `data.execute` | `execute` | `POST /api/guard/execute` |
-| `db.migration` | `propose_operation` | `POST /api/guard/op` |
-| `function.deploy` | `propose_operation` | `POST /api/guard/op` |
-| `storage.config` | `propose_operation` | `POST /api/guard/op` |
-| `auth.config` | `propose_operation` | `POST /api/guard/op` |
+| `db.migration` | — (HTTP only) | `POST /api/guard/op` |
+| `function.deploy` | — (HTTP only) | `POST /api/guard/op` |
+| `storage.config` | — (HTTP only) | `POST /api/guard/op` |
+| `auth.config` | — (HTTP only) | `POST /api/guard/op` |
+
+Schema introspection MCP tools (`list_tables`, `describe_table`) and `get_action_status` are stable. Audit listing is `GET /api/actions` (not an MCP tool).
 
 ## Stable response fields (guard)
 

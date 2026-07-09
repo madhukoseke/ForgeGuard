@@ -108,6 +108,14 @@ export default function Dashboard() {
           void refresh();
         }}
       />
+      <header className="mb-10">
+        <h1 className="text-lg font-medium tracking-tight">Operator dashboard</h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-muted">
+          Simulated agent ops through the same guard pipeline. Press{" "}
+          <kbd className="font-mono text-xs">D</kbd> or Run demo — no credentials
+          needed.
+        </p>
+      </header>
       <DashboardStats summary={summary} />
 
       <SimulatorSection
