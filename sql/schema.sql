@@ -1,4 +1,4 @@
--- ForgeGuard data model (InsForge Postgres) — §4 of the prep kit.
+-- ForgeGuard data model (InsForge Postgres) — see docs/ARCHITECTURE.md.
 -- Apply this to your InsForge project before switching FORGEGUARD_STORE=insforge.
 
 create table if not exists agent_actions (
