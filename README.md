@@ -339,7 +339,7 @@ Copy `.env.example` → `.env.local`. All variables are optional for the local d
 | `INSFORGE_MODEL_GATEWAY_URL` | Model gateway base (default: OpenRouter) |
 | `FORGEGUARD_MODEL` | Model id for classifier |
 | `FORGEGUARD_OPERATOR_TOKEN` | Protect API routes (required in production) |
-| `FORGEGUARD_STRICT_CONFIG` | `1` in production: `/api/readiness` returns 503 when config is unsafe |
+| `FORGEGUARD_STRICT_CONFIG` | Defaults **on** in production: `/api/readiness` returns 503 when config is unsafe. Set `0` to opt out. |
 | `FORGEGUARD_BASE_URL` | Target URL for `seed` / E2E scripts |
 | `REPLICAS_WEBHOOK_SECRET` | Verify Replicas webhook signatures |
 | `LIM_API_KEY` / `LIMRUN_INSTANCE_ID` | Limrun mobile preview for pending ops |
@@ -359,7 +359,7 @@ Copy `.env.example` → `.env.local`. All variables are optional for the local d
 2. Set a durable audit store — **`FORGEGUARD_STORE=postgres`** (+ `DATABASE_URL`) or **`insforge`**; memory is ephemeral on serverless
 3. Set **`REPLICAS_WEBHOOK_SECRET`** if using `POST /api/webhooks/replicas`
 4. For InsForge: run **`npm run bootstrap:insforge`** and set `FORGEGUARD_EXECUTOR=insforge`
-5. Optional: set **`FORGEGUARD_STRICT_CONFIG=1`** so `/api/readiness` fails when misconfigured ([DEPLOYMENT.md](./docs/DEPLOYMENT.md))
+5. In production, **`FORGEGUARD_STRICT_CONFIG` is on by default** so `/api/readiness` fails when misconfigured ([DEPLOYMENT.md](./docs/DEPLOYMENT.md)); set `=0` only to bypass
 
 **Vercel:**
 

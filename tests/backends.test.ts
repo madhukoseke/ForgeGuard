@@ -42,7 +42,7 @@ test("memory backend tracks simulated create/drop table", async () => {
   assert.ok(!(await backend.listTables()).some((t) => t.name === "notes"));
 });
 
-test("backend selection falls back to memory without credentials", () => {
+test("backend selection defaults to memory without credentials", () => {
   const savedEnv = { ...process.env };
   delete process.env.FORGEGUARD_BACKEND;
   delete process.env.FORGEGUARD_DATABASE_URL;
@@ -51,9 +51,28 @@ test("backend selection falls back to memory without credentials", () => {
   delete process.env.INSFORGE_KEY;
   try {
     assert.equal(requestedBackendKind(), "memory");
-    // Requesting postgres without DATABASE_URL degrades gracefully.
-    assert.equal(createDataBackend("postgres").kind, "memory");
-    assert.equal(createDataBackend("insforge").kind, "memory");
+    assert.equal(createDataBackend("memory").kind, "memory");
+  } finally {
+    process.env = savedEnv;
+    setDataBackendForTests(null);
+  }
+});
+
+test("explicit durable backends refuse memory fallback without credentials", () => {
+  const savedEnv = { ...process.env };
+  delete process.env.FORGEGUARD_DATABASE_URL;
+  delete process.env.DATABASE_URL;
+  delete process.env.INSFORGE_URL;
+  delete process.env.INSFORGE_KEY;
+  try {
+    assert.throws(
+      () => createDataBackend("postgres"),
+      /refusing memory fallback/,
+    );
+    assert.throws(
+      () => createDataBackend("insforge"),
+      /refusing memory fallback/,
+    );
   } finally {
     process.env = savedEnv;
     setDataBackendForTests(null);

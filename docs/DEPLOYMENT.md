@@ -15,7 +15,7 @@
 3. **`DATABASE_URL`** — when using postgres backend/store
 4. **`REPLICAS_WEBHOOK_SECRET`** — if Replicas webhook is enabled
 5. **Bootstrap InsForge** — `npm run bootstrap:insforge` before `FORGEGUARD_STORE=insforge`
-6. **Readiness check** — `GET /api/readiness` should show `ready: true`; set **`FORGEGUARD_STRICT_CONFIG=1`** in production to return **503** when misconfigured
+6. **Readiness check** — `GET /api/readiness` should show `ready: true`; in production strict mode is **on by default** (503 when misconfigured; set `FORGEGUARD_STRICT_CONFIG=0` only to bypass)
 
 ## Vercel
 
@@ -76,20 +76,30 @@ See [POSTGRES_QUICKSTART.md](./POSTGRES_QUICKSTART.md) for role setup. Never use
 - Rotate keys in InsForge dashboard; update env; redeploy; revoke old key
 - See [INSFORGE_QUICKSTART.md](./INSFORGE_QUICKSTART.md)
 
-## Memory fallback (current behavior)
+## Memory vs durable stores
 
-If credentials for the configured store are missing, ForgeGuard falls back to memory with a console warning. Check `/api/readiness` in production.
+- Default / `FORGEGUARD_STORE=memory` — zero-credential demo only
+- Explicit `FORGEGUARD_STORE=postgres` or `insforge` **without** credentials **hard-fails** (no silent memory fallback)
+- Same rule for `FORGEGUARD_BACKEND=postgres|insforge`
 
 ## Strict production config
 
-Set `FORGEGUARD_STRICT_CONFIG=1` in production so `/api/readiness` returns **503** when:
+In production, **`FORGEGUARD_STRICT_CONFIG` defaults on** so `/api/readiness` returns **503** when:
 
 - `FORGEGUARD_OPERATOR_TOKEN` is missing
 - `FORGEGUARD_STORE=memory`
 - Postgres/InsForge store is configured without credentials
 - Replicas is enabled without `REPLICAS_WEBHOOK_SECRET`
 
-Wire your load balancer or uptime monitor to fail when readiness is not `ready: true`.
+Set `FORGEGUARD_STRICT_CONFIG=0` only for emergency bypass. Wire your load balancer or uptime monitor to fail when readiness is not `ready: true`.
+
+### Migrating from soft fallback (pre–Phase B)
+
+Older builds fell back to memory with a console warning when durable credentials were missing. After this change:
+
+1. Ensure `DATABASE_URL` / InsForge env vars are set wherever `FORGEGUARD_STORE` or `FORGEGUARD_BACKEND` is `postgres` or `insforge`
+2. Or set those vars to `memory` intentionally for demos
+3. Expect process/API errors if credentials are still missing — that is intentional
 
 ## Edge rate limiting (multi-instance)
 

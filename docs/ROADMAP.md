@@ -5,7 +5,7 @@ Product direction for the capability leap beyond 0.3: **[V2.md](./V2.md)**.
 ## Product v2 (phased)
 
 - [x] **A — MCP parity** — `propose_operation`, `list_actions` (approve/reject stay HTTP; optional `review_action` later)
-- [ ] **B — Fail-closed production** — strict defaults; no silent memory fallback when durable store was requested
+- [x] **B — Fail-closed production** — strict defaults; no silent memory fallback when durable store was requested
 - [ ] **C — Operator identity** — server-verified `reviewed_by`; named keys / roles
 - [ ] **D — Operator dashboard** — search, bulk actions, export, pending alerts
 - [ ] **E — Stronger guard core** — AST-backed SQL detection; configurable thresholds
@@ -15,7 +15,7 @@ Suggested tags: `0.4` (A) → `0.5` (B+C) → `0.6` (D) → `0.7` (E) → `1.0` 
 
 ## Core (near term / launch)
 
-- [x] Hard-fail production misconfiguration (`FORGEGUARD_STRICT_CONFIG` + `/api/readiness` 503) — tighten further in Phase B
+- [x] Hard-fail production misconfiguration (`FORGEGUARD_STRICT_CONFIG` defaults on in production + `/api/readiness` 503; durable store/backend refuse memory fallback)
 - [ ] Explicit npm `exports` map for supported library surface → **Phase F** / [V2.md](./V2.md)
 - [ ] Demo GIF/MP4 in `docs/assets/` (record per DEMO_SCRIPT.md)
 - [x] Dashboard screenshot script (`npm run capture:screenshots`)

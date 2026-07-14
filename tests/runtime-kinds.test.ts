@@ -27,10 +27,11 @@ test("activeStoreKind reports postgres when DATABASE_URL is set", () => {
   assert.equal(activeStoreKind(), "postgres");
 });
 
-test("activeStoreKind falls back to memory without credentials", () => {
+test("activeStoreKind reports memory when postgres was requested without credentials", () => {
   process.env.FORGEGUARD_STORE = "postgres";
   delete process.env.DATABASE_URL;
   delete process.env.FORGEGUARD_DATABASE_URL;
+  // Kind resolver stays advisory; getStore() hard-fails instead of falling back.
   assert.equal(activeStoreKind(), "memory");
 });
 

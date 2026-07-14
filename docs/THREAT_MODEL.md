@@ -31,7 +31,7 @@ Use `FORGEGUARD_STORE=postgres` or `insforge` with durable credentials. See [DEP
 
 ## Credential fallback behavior
 
-When `FORGEGUARD_STORE=insforge` or `postgres` is set but credentials are missing, ForgeGuard **falls back to memory** with a console warning. This aids demos but can hide misconfiguration in production. Check `/api/readiness` for advisory warnings.
+When `FORGEGUARD_STORE` or `FORGEGUARD_BACKEND` is explicitly `postgres` or `insforge` but credentials are missing, ForgeGuard **refuses to start that path** (throws; no silent memory fallback). Use `memory` (or unset) for the zero-credential demo. In production, `/api/readiness` returns **503** by default when config is unsafe (`FORGEGUARD_STRICT_CONFIG` defaults on; set `=0` to opt out).
 
 ## Public endpoints
 
@@ -40,7 +40,7 @@ These endpoints are intentionally unauthenticated:
 | Endpoint | Exposes |
 |----------|---------|
 | `GET /api/health` | Resolved `store` / `backend`, config `ready`, runtime reachability (`store_reachable`, `backend_reachable`), executor, integration booleans (InsForge reachable, Replicas/Limrun configured, `strict`) |
-| `GET /api/readiness` | Advisory config warnings (`ready`, `warnings[]`); returns **503** when `FORGEGUARD_STRICT_CONFIG=1` in production and config is unsafe |
+| `GET /api/readiness` | Advisory config warnings (`ready`, `warnings[]`); returns **503** in production by default when config is unsafe (`FORGEGUARD_STRICT_CONFIG` defaults on; `=0` to opt out) |
 | `GET /api/demo` | Canned demo operation metadata |
 
 They do not expose SQL, audit rows, or secrets. Use `GET /api/health?minimal=1` for a reduced payload in production monitoring.

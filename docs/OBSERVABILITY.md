@@ -12,14 +12,14 @@ Use `GET /api/health?minimal=1` in production probes for a minimal `{ ok: true }
 
 By default the endpoint always returns **200**; parse `ready` and `warnings` in monitoring.
 
-When **`FORGEGUARD_STRICT_CONFIG=1`** in production, the same endpoint returns **503** if `ready` is false (misconfiguration or unreachable Postgres/InsForge dependencies). Wire load balancers and uptime checks to `/api/readiness` in that mode.
+When **`FORGEGUARD_STRICT_CONFIG` is on** (the default in production; set `=0` to opt out), the same endpoint returns **503** if `ready` is false (misconfiguration or unreachable Postgres/InsForge dependencies). Wire load balancers and uptime checks to `/api/readiness` in that mode.
 
 ## Logging
 
 ForgeGuard logs credential fallback warnings to stdout:
 
 ```
-[ForgeGuard] FORGEGUARD_STORE=insforge but INSFORGE_URL/INSFORGE_KEY are unset — falling back to memory backend.
+[ForgeGuard] FORGEGUARD_STORE=insforge but INSFORGE_URL/INSFORGE_KEY are unset — refusing memory fallback.
 ```
 
 Collect stdout from Vercel Functions, Docker, or `npm start`.

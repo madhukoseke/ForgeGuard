@@ -12,7 +12,7 @@
 import { computeActionSummary, type ActionSummary } from "./action-summary";
 import { getInsForgeConfig } from "./insforge-client";
 import { hasPostgresConnectionUrl } from "./postgres-env";
-import { isProduction } from "./production";
+import { ForgeGuardConfigError, isProduction } from "./production";
 import { PostgresStore } from "./store-postgres";
 import { AgentAction, ActionStatus } from "./types";
 
@@ -355,7 +355,7 @@ let store: ActionStore | null = null;
 
 export type StoreKind = "memory" | "postgres" | "insforge";
 
-/** Resolved audit store (after credential fallback), without instantiating the store. */
+/** Resolved audit store when credentials are present; otherwise memory (requested may differ). */
 export function activeStoreKind(): StoreKind {
   const backend = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();
   if (backend === "insforge" && getInsForgeConfig()) {
@@ -370,27 +370,37 @@ export function activeStoreKind(): StoreKind {
 export function getStore(): ActionStore {
   if (store) return store;
   const backend = (process.env.FORGEGUARD_STORE || "memory").toLowerCase();
-  if (backend === "insforge" && process.env.INSFORGE_URL && process.env.INSFORGE_KEY) {
-    store = new InsForgeStore(process.env.INSFORGE_URL, process.env.INSFORGE_KEY);
+  if (backend === "insforge") {
+    const url = process.env.INSFORGE_URL?.trim();
+    const key = process.env.INSFORGE_KEY?.trim();
+    if (!url || !key) {
+      throw new ForgeGuardConfigError(
+        "FORGEGUARD_STORE=insforge but INSFORGE_URL/INSFORGE_KEY are unset — refusing memory fallback.",
+      );
+    }
+    store = new InsForgeStore(url, key);
   } else if (backend === "postgres") {
     const pgStore = PostgresStore.fromEnv();
-    if (pgStore) {
-      store = pgStore;
-    } else {
-      console.warn(
-        "[ForgeGuard] FORGEGUARD_STORE=postgres but DATABASE_URL is unset — falling back to memory store.",
+    if (!pgStore) {
+      throw new ForgeGuardConfigError(
+        "FORGEGUARD_STORE=postgres but DATABASE_URL is unset — refusing memory fallback.",
       );
-      store = new MemoryStore();
     }
+    store = pgStore;
   } else {
     if (isProduction() && process.env.VERCEL === "1") {
       console.warn(
-        "[ForgeGuard] FORGEGUARD_STORE=memory on Vercel — audit data is per-instance and ephemeral. Set FORGEGUARD_STORE=insforge for production.",
+        "[ForgeGuard] FORGEGUARD_STORE=memory on Vercel — audit data is per-instance and ephemeral. Set FORGEGUARD_STORE=postgres or insforge for production.",
       );
     }
     store = new MemoryStore();
   }
   return store;
+}
+
+/** Test hook: clear the cached store singleton. */
+export function resetStoreForTests(): void {
+  store = null;
 }
 
 export function getStoreListMeta(): {

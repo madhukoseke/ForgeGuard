@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (0.3.0)
+Accepted (0.3.0) · Amended (Product v2 Phase B)
 
 ## Context
 
@@ -10,10 +10,12 @@ ForgeGuard needs a frictionless quick start (`npm run dev`, `npm run mcp`) witho
 
 ## Decision
 
-Default audit store and data backend is **in-memory** with seeded demo data. Missing credentials for postgres/insforge fall back to memory with a console warning.
+Default audit store and data backend is **in-memory** with seeded demo data when `FORGEGUARD_STORE` / `FORGEGUARD_BACKEND` are unset or set to `memory`.
+
+**Amendment (Phase B):** Explicit `postgres` or `insforge` without credentials **does not** fall back to memory — ForgeGuard throws `ForgeGuardConfigError`. Production defaults `FORGEGUARD_STRICT_CONFIG` on so `/api/readiness` returns 503 when config is unsafe.
 
 ## Consequences
 
-- Ephemeral audit trail on serverless — documented as unsafe for production
+- Ephemeral audit trail on serverless when memory is chosen — documented as unsafe for production
 - `/api/readiness` warns when memory is used in production
-- Hard-fail on misconfiguration deferred; may be added later
+- Misconfigured durable store/backend fails loudly instead of silently demoing

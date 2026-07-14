@@ -67,7 +67,7 @@ Layer 1 ([`prefilter.ts`](../lib/prefilter.ts)) is deterministic destructive-SQL
 
 ## Three independent axes
 
-Defaults always fall back to memory / simulated so `npm run dev` and `npm run mcp` work with zero credentials ([ADR-002](./adr/002-simulated-default-executor.md), [ADR-003](./adr/003-memory-store-demo-default.md)). Set `FORGEGUARD_STRICT_CONFIG=1` so `/api/readiness` fails closed when production config is incomplete.
+Defaults use memory / simulated so `npm run dev` and `npm run mcp` work with zero credentials ([ADR-002](./adr/002-simulated-default-executor.md), [ADR-003](./adr/003-memory-store-demo-default.md)). Explicit `postgres` / `insforge` without credentials **hard-fails** (no silent memory fallback). In production, `FORGEGUARD_STRICT_CONFIG` defaults on so `/api/readiness` fails closed when config is incomplete (`=0` to opt out).
 
 | Axis | Env | Resolves in | Values |
 |------|-----|-------------|--------|

@@ -5,7 +5,7 @@ const FAQS = [
   },
   {
     q: "How do agents connect?",
-    a: "Point Claude Desktop, Cursor, or any MCP client at the forgeguard-mcp server (query / execute tools). HTTP-only agents can call POST /api/guard/query, /api/guard/execute, or /api/guard/op instead.",
+    a: "Point Claude Desktop, Cursor, or any MCP client at the forgeguard-mcp server (`query`, `execute`, `propose_operation`, …). HTTP-only agents can call POST /api/guard/query, /api/guard/execute, or /api/guard/op instead.",
   },
   {
     q: "Do I need InsForge?",

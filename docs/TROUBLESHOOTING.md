@@ -43,7 +43,7 @@ Confirm the container is running: `docker compose ps`. See [POSTGRES_QUICKSTART.
 
 ## Missing `DATABASE_URL`
 
-**Symptom:** MCP or dashboard falls back to memory; log shows `falling back to memory backend`.
+**Symptom:** Logs/errors show `refusing memory fallback` when `FORGEGUARD_BACKEND` or `FORGEGUARD_STORE` is `postgres`.
 
 **Fix:**
 
@@ -53,7 +53,7 @@ FORGEGUARD_BACKEND=postgres
 FORGEGUARD_STORE=postgres
 ```
 
-For demo only, omit credentials and use memory intentionally.
+For demo only, set store/backend to `memory` (or omit them) intentionally.
 
 ## Missing InsForge credentials
 
@@ -67,7 +67,7 @@ For demo only, omit credentials and use memory intentionally.
 
 **Fix:** Use `FORGEGUARD_STORE=postgres` with `DATABASE_URL`, or `insforge` with InsForge credentials. Memory is demo-only on serverless.
 
-Check `/api/readiness` for warnings. Set **`FORGEGUARD_STRICT_CONFIG=1`** in production so misconfiguration fails deploy checks (503). See [DEPLOYMENT.md](./DEPLOYMENT.md).
+Check `/api/readiness` for warnings. In production, strict config is **on by default** so misconfiguration fails deploy checks (503). Set `FORGEGUARD_STRICT_CONFIG=0` only to bypass. See [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## npm cache permission errors
 
