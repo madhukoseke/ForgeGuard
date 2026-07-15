@@ -103,5 +103,5 @@ curl -s http://localhost:3000/api/actions | jq '.actions[0]'
 # Approve (replace ID)
 curl -s -X PATCH http://localhost:3000/api/actions/<id> \
   -H 'content-type: application/json' \
-  -d '{"decision":"approve","reviewed_by":"demo"}'
+  -d '{"decision":"approve"}'
 ```

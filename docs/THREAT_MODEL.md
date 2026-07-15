@@ -45,11 +45,11 @@ These endpoints are intentionally unauthenticated:
 
 They do not expose SQL, audit rows, or secrets. Use `GET /api/health?minimal=1` for a reduced payload in production monitoring.
 
-Protected routes require `FORGEGUARD_OPERATOR_TOKEN` in production. See [ADMIN_TOKEN.md](./ADMIN_TOKEN.md).
+Protected routes require an operator token in production (`FORGEGUARD_OPERATOR_TOKEN` and/or `FORGEGUARD_OPERATORS`). Approvals set `reviewed_by` from the verified operator — the client cannot spoof it. See [ADMIN_TOKEN.md](./ADMIN_TOKEN.md).
 
 ## Operator token and XSS
 
-The dashboard stores the operator token in **browser localStorage** after prompt. A cross-site scripting flaw in the dashboard could exfiltrate the token. Keep ForgeGuard behind trusted networks; use strong tokens; do not embed the dashboard in untrusted iframes (also blocked by `X-Frame-Options: DENY`).
+The dashboard stores the operator token in **browser localStorage** after prompt. A cross-site scripting flaw in the dashboard could exfiltrate the token. Keep ForgeGuard behind trusted networks; use strong tokens; do not embed the dashboard in untrusted iframes (also blocked by `X-Frame-Options: DENY`). Prefer one token per operator so compromised tokens are attributable.
 
 ## Rate limiting
 

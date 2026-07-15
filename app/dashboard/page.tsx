@@ -51,7 +51,6 @@ export default function Dashboard() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             decision,
-            reviewed_by: "operator",
             ...(decision === "approve" && applySafer ? { apply_safer: true } : {}),
           }),
         });

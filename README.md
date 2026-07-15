@@ -309,7 +309,7 @@ curl -X POST http://localhost:3000/api/guard/op \
 curl 'http://localhost:3000/api/actions?limit=50&offset=0'
 curl -X PATCH http://localhost:3000/api/actions/<id> \
   -H 'content-type: application/json' \
-  -d '{ "decision": "approve", "reviewed_by": "operator" }'
+  -d '{ "decision": "approve" }'
 curl http://localhost:3000/api/health
 ```
 
@@ -338,7 +338,8 @@ Copy `.env.example` → `.env.local`. All variables are optional for the local d
 | `OPENROUTER_API_KEY` | Layer 2 LLM classifier |
 | `INSFORGE_MODEL_GATEWAY_URL` | Model gateway base (default: OpenRouter) |
 | `FORGEGUARD_MODEL` | Model id for classifier |
-| `FORGEGUARD_OPERATOR_TOKEN` | Protect API routes (required in production) |
+| `FORGEGUARD_OPERATOR_TOKEN` | Protect API routes (required in production); sets `reviewed_by` via optional `FORGEGUARD_OPERATOR_ID` |
+| `FORGEGUARD_OPERATORS` | JSON array of `{ id, token, name? }` for multiple attributable operators |
 | `FORGEGUARD_STRICT_CONFIG` | Defaults **on** in production: `/api/readiness` returns 503 when config is unsafe. Set `0` to opt out. |
 | `FORGEGUARD_BASE_URL` | Target URL for `seed` / E2E scripts |
 | `REPLICAS_WEBHOOK_SECRET` | Verify Replicas webhook signatures |
@@ -349,7 +350,7 @@ Copy `.env.example` → `.env.local`. All variables are optional for the local d
 
 **Bootstrap InsForge** (applies `sql/schema.sql`): `npm run bootstrap:insforge`, then set `FORGEGUARD_STORE=insforge` and `FORGEGUARD_EXECUTOR=insforge`.
 
-**Auth:** when `FORGEGUARD_OPERATOR_TOKEN` is set, send `Authorization: Bearer <token>` or `x-forgeguard-token: <token>` on protected routes. In production it is required.
+**Auth:** when operator tokens are configured, send `Authorization: Bearer <token>` or `x-forgeguard-token: <token>` on protected routes. Approvals set `reviewed_by` from the verified operator id (not the request body). In production a token is required. See [ADMIN_TOKEN.md](./docs/ADMIN_TOKEN.md).
 
 ---
 

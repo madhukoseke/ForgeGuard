@@ -1,7 +1,7 @@
 // Human review actions on a single audit row: approve / reject / rollback.
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireOperatorToken } from "@/lib/api-auth";
+import { requireOperator } from "@/lib/api-auth";
 import { getDataBackend } from "@/lib/backends";
 import { applyDataAction, rollbackDataAction } from "@/lib/data-guard";
 import { applyOp, rollbackOp, getExecutorMode, executorIsLive } from "@/lib/insforge-executor";
@@ -27,8 +27,10 @@ export async function PATCH(
   const limited = enforceRateLimit(req);
   if (limited) return limited;
 
-  const unauthorized = requireOperatorToken(req);
-  if (unauthorized) return unauthorized;
+  const auth = requireOperator(req);
+  if ("error" in auth) return auth.error;
+  // Server-verified identity — ignore any client-supplied reviewed_by.
+  const reviewer = auth.operator.id;
 
   let body: unknown = {};
   try {
@@ -42,10 +44,6 @@ export async function PATCH(
       ? (body as Record<string, unknown>)
       : {};
   const decision = bodyRecord.decision as Decision | undefined;
-  const reviewer =
-    typeof bodyRecord.reviewed_by === "string" && bodyRecord.reviewed_by.trim()
-      ? bodyRecord.reviewed_by.trim()
-      : "operator";
 
   if (!decision || !["approve", "reject", "rollback"].includes(decision)) {
     return NextResponse.json(
