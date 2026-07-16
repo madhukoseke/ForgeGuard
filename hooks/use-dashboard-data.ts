@@ -112,10 +112,10 @@ export function useDashboardData() {
   }, [health, refreshHealth]);
 
   useEffect(() => {
-    const pollMs = healthPollIntervalMs(health);
+    const pollMs = healthPollIntervalMs(health, summary.pending);
     const actionsTimer = setInterval(() => void refresh(), pollMs);
     return () => clearInterval(actionsTimer);
-  }, [refresh, health]);
+  }, [refresh, health, summary.pending]);
 
   useEffect(() => {
     const prev = prevHealthRef.current;

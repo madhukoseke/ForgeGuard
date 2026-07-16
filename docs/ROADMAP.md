@@ -7,7 +7,7 @@ Product direction for the capability leap beyond 0.3: **[V2.md](./V2.md)**.
 - [x] **A — MCP parity** — `propose_operation`, `list_actions` (approve/reject stay HTTP; optional `review_action` later)
 - [x] **B — Fail-closed production** — strict defaults; no silent memory fallback when durable store was requested
 - [x] **C — Operator identity (C1)** — server-verified `reviewed_by`; named tokens via `FORGEGUARD_OPERATORS` (roles / SSO later)
-- [ ] **D — Operator dashboard** — search, bulk actions, export, pending alerts
+- [x] **D — Operator dashboard** — search, bulk actions, export, pending webhook, faster poll when pending
 - [ ] **E — Stronger guard core** — AST-backed SQL detection; configurable thresholds
 - [ ] **F — Library API + schema** — npm `exports` map (former “v1” item); unified migrations
 

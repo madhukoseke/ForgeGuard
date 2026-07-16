@@ -35,6 +35,11 @@ test("healthPollIntervalMs slows polling when not ready", () => {
   assert.equal(healthPollIntervalMs({ ...base, ready: false }), 10_000);
 });
 
+test("healthPollIntervalMs speeds up when pending approvals exist", () => {
+  assert.equal(healthPollIntervalMs(base, 0), 4_000);
+  assert.equal(healthPollIntervalMs(base, 3), 2_000);
+});
+
 test("healthFetchIntervalMs polls faster when degraded", () => {
   assert.equal(healthFetchIntervalMs(base), 15_000);
   assert.equal(healthFetchIntervalMs({ ...base, ready: false }), 10_000);

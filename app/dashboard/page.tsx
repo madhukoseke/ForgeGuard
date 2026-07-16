@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { ActionQuery } from "@/lib/action-query";
 import type { AgentAction } from "@/lib/types";
 import { ActionsSection } from "@/components/dashboard/ActionsSection";
 import { ConnectionStatus } from "@/components/dashboard/ConnectionStatus";
@@ -15,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState<ActionQuery>({});
   const { toasts, toast } = useToast();
 
   const {
@@ -80,6 +82,37 @@ export default function Dashboard() {
     [refresh, setBusy, setError, toast],
   );
 
+  const bulkReview = useCallback(
+    async (ids: string[], decision: "approve" | "reject") => {
+      if (ids.length === 0) return;
+      setBusy(`bulk-${decision}`);
+      setError(null);
+      let ok = 0;
+      try {
+        for (const id of ids) {
+          const res = await fetchWithOperatorToken(`/api/actions/${id}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              decision,
+              ...(decision === "approve" ? { apply_safer: true } : {}),
+            }),
+          });
+          if (res.ok) ok += 1;
+        }
+        await refresh();
+        toast(
+          decision === "approve"
+            ? `Approved ${ok}/${ids.length}`
+            : `Rejected ${ok}/${ids.length}`,
+        );
+      } finally {
+        setBusy(null);
+      }
+    },
+    [refresh, setBusy, setError, toast],
+  );
+
   const { demo, runCinematicDemo, cancelDemo } = useCinematicDemo({
     actions,
     refresh,
@@ -137,12 +170,15 @@ export default function Dashboard() {
         actions={actions}
         summary={summary}
         filter={filter}
+        query={query}
         busy={busy}
         loading={loading}
         hasMore={pagination?.has_more ?? false}
         loadingMore={loadingMore}
         onFilterChange={setFilter}
+        onQueryChange={(patch) => setQuery((prev) => ({ ...prev, ...patch }))}
         onReview={review}
+        onBulkReview={(ids, decision) => void bulkReview(ids, decision)}
         onLoadMore={() => void loadMore()}
       />
 

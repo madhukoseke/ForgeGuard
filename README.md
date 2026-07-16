@@ -340,6 +340,7 @@ Copy `.env.example` → `.env.local`. All variables are optional for the local d
 | `FORGEGUARD_MODEL` | Model id for classifier |
 | `FORGEGUARD_OPERATOR_TOKEN` | Protect API routes (required in production); sets `reviewed_by` via optional `FORGEGUARD_OPERATOR_ID` |
 | `FORGEGUARD_OPERATORS` | JSON array of `{ id, token, name? }` for multiple attributable operators |
+| `FORGEGUARD_PENDING_WEBHOOK_URL` | Optional webhook when an op is held for approval |
 | `FORGEGUARD_STRICT_CONFIG` | Defaults **on** in production: `/api/readiness` returns 503 when config is unsafe. Set `0` to opt out. |
 | `FORGEGUARD_BASE_URL` | Target URL for `seed` / E2E scripts |
 | `REPLICAS_WEBHOOK_SECRET` | Verify Replicas webhook signatures |

@@ -8,6 +8,7 @@ import { scanInbound } from "./injection";
 import { applyOp } from "./insforge-executor";
 import { getExecutorMode } from "./insforge-client";
 import { resolvePreviewUrl, shouldAttachPreview } from "./limrun";
+import { emitPendingAlert } from "./pending-notify";
 import { prefilter } from "./prefilter";
 import { getStore } from "./store";
 import {
@@ -131,6 +132,10 @@ export async function guardOp(op: ProposedOp): Promise<GuardResult> {
       action.status = "pending";
       action.rationale = `${action.rationale ?? ""} Apply failed: ${apply_error}`.trim();
     }
+  }
+
+  if (action.status === "pending") {
+    void emitPendingAlert(action);
   }
 
   return { action, verdict, status, applied, apply_error };

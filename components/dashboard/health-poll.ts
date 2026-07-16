@@ -1,6 +1,7 @@
 import type { HealthStatus } from "./types";
 
 export const ACTIONS_POLL_HEALTHY_MS = 4_000;
+export const ACTIONS_POLL_PENDING_MS = 2_000;
 export const ACTIONS_POLL_DEGRADED_MS = 10_000;
 export const HEALTH_FETCH_HEALTHY_MS = 15_000;
 export const HEALTH_FETCH_DEGRADED_MS = 10_000;
@@ -18,11 +19,14 @@ export function isHealthDegraded(health: HealthStatus | null): boolean {
   return false;
 }
 
-/** Slower polling when health is degraded or backends are unreachable. */
-export function healthPollIntervalMs(health: HealthStatus | null): number {
-  return isHealthDegraded(health)
-    ? ACTIONS_POLL_DEGRADED_MS
-    : ACTIONS_POLL_HEALTHY_MS;
+/** Slower when degraded; faster when pending approvals need operator attention. */
+export function healthPollIntervalMs(
+  health: HealthStatus | null,
+  pendingCount = 0,
+): number {
+  if (isHealthDegraded(health)) return ACTIONS_POLL_DEGRADED_MS;
+  if (pendingCount > 0) return ACTIONS_POLL_PENDING_MS;
+  return ACTIONS_POLL_HEALTHY_MS;
 }
 
 export function healthFetchIntervalMs(health: HealthStatus | null): number {

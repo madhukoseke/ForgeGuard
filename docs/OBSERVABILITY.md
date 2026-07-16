@@ -24,10 +24,15 @@ ForgeGuard logs credential fallback warnings to stdout:
 
 Collect stdout from Vercel Functions, Docker, or `npm start`.
 
+## Pending approval webhook
+
+Set `FORGEGUARD_PENDING_WEBHOOK_URL` to receive `forgeguard.action.pending` JSON when an op is held for review (Slack incoming webhook or any HTTP endpoint). Applied events remain on `MEMOIR_WEBHOOK_URL` when configured.
+
 ## Suggested alerts
 
 - `/api/readiness` `ready: false` in production
 - Spike in `429` rate-limit responses
 - InsForge store errors (`502` from `/api/actions`)
+- Pending webhook delivery failures (monitor the receiver)
 
 OpenTelemetry integration is planned; see [ROADMAP.md](./ROADMAP.md).

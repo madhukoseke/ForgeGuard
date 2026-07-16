@@ -16,6 +16,7 @@ import {
   scanRows,
 } from "./injection";
 import { inverseSql } from "./inverse-sql";
+import { emitPendingAlert } from "./pending-notify";
 import {
   checkPolicy,
   loadPolicy,
@@ -316,6 +317,7 @@ export async function guardDataExecute(
   if (verdict.requires_approval) {
     action.status = "pending";
     await getStore().insert(action);
+    void emitPendingAlert(action);
     return {
       action_id: action.id,
       status: "pending",
