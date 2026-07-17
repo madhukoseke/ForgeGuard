@@ -125,7 +125,13 @@ export function maxSeverity(a: Severity, b: Severity): Severity {
   return severityRank(a) >= severityRank(b) ? a : b;
 }
 
-// requires_approval is true for medium and above (see docs/ARCHITECTURE.md).
-export function computeRequiresApproval(severity: Severity): boolean {
-  return severityRank(severity) >= severityRank("medium");
+/**
+ * requires_approval when severity is at or above the configured threshold.
+ * Default threshold is medium (see docs/ARCHITECTURE.md / forgeguard.config.json).
+ */
+export function computeRequiresApproval(
+  severity: Severity,
+  threshold: Severity = "medium",
+): boolean {
+  return severityRank(severity) >= severityRank(threshold);
 }

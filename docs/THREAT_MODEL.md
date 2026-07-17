@@ -11,9 +11,21 @@ ForgeGuard reduces risk from AI agents accessing your database. It is **not** a 
 - Logs every operation to an audit trail with human-in-the-loop approval for risky ops
 - Supports compensating rollback snapshots for approved changes
 
+## SQL detection (AST + regex)
+
+Layer 1 uses **AST-backed** analysis via `pgsql-ast-parser` for common Postgres SQL (`lib/sql-ast.ts`): table refs, statement class, `DROP TABLE` / `TRUNCATE`, unconditional `DELETE`/`UPDATE` (including CTE wrappers and leading comments), `DROP COLUMN`, type changes, `ADD … NOT NULL` without default, and non-concurrent indexes.
+
+When parse fails, ForgeGuard **falls back to regex** rules so unsupported syntax still gets a conservative scan.
+
+### Residual risks
+
+- **Unsupported dialect / PL/pgSQL / exotic DDL** (e.g. `DISABLE ROW LEVEL SECURITY`, `DROP POLICY`) may not parse — regex covers the known cases; novel spellings can still bypass.
+- **Multi-statement tricks and dynamic SQL** (`EXECUTE format(...)`) are outside the AST surface.
+- **Optional `blast_radius_probe`** runs `count(*)` on a single safe table name only; it is fail-open and can be wrong under concurrent writes.
+- **Anomaly write-burst** signals are advisory (appended to rationale) and do not block by themselves.
+
 ## What ForgeGuard does not do
 
-- **Formal SQL parser** — deterministic scans use conservative pattern matching, not a full SQL grammar. Unusual syntax may bypass or false-positive.
 - **Replace database permissions** — use least-privilege DB roles, RLS, and network isolation in addition to ForgeGuard.
 - **Replace backups** — maintain regular backups and tested restore procedures.
 - **Replace code review** — operators should review pending ops, rationale, and safer alternatives.

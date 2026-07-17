@@ -14,5 +14,9 @@
     "drop",
     "truncate",
     "comment"
-  ]
+  ],
+  "approval_threshold": "medium",
+  "anomaly_write_burst_limit": 20,
+  "anomaly_write_burst_window_ms": 60000,
+  "blast_radius_probe": false
 }

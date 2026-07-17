@@ -61,7 +61,7 @@ flowchart TD
 
 ![Guard pipeline](./diagrams/forgeguard-guard-pipeline.png)
 
-Layer 1 ([`prefilter.ts`](../lib/prefilter.ts)) is deterministic destructive-SQL rules. Layer 2 ([`classifier.ts`](../lib/classifier.ts)) is LLM or heuristic severity / safer alternative. Merge rules and approval thresholds live in [`lib/types.ts`](../lib/types.ts) (`computeRequiresApproval`).
+Layer 1 ([`prefilter.ts`](../lib/prefilter.ts)) is deterministic destructive-SQL rules backed by [`sql-ast.ts`](../lib/sql-ast.ts) (`pgsql-ast-parser`) with regex fallback. Layer 2 ([`classifier.ts`](../lib/classifier.ts)) is LLM or heuristic severity / safer alternative. Approval threshold comes from `forgeguard.config.json` (`approval_threshold`, default `medium`) via [`lib/types.ts`](../lib/types.ts) (`computeRequiresApproval`).
 
 ---
 

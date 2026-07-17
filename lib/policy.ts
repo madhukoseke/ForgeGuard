@@ -4,6 +4,9 @@
 
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { astReferencedTables, astStatementClass } from "./sql-ast";
+import type { Severity } from "./types";
+import { SEVERITY_ORDER } from "./types";
 
 export interface ForgeGuardPolicy {
   /** Tables agents may never read or write (case-insensitive). */
@@ -14,6 +17,16 @@ export interface ForgeGuardPolicy {
   max_rows: number;
   /** Statement classes allowed through the `execute` tool. */
   allowed_statements: string[];
+  /**
+   * Minimum severity that requires human approval (inclusive).
+   * Default: medium (safe/low auto-allow).
+   */
+  approval_threshold: Severity;
+  /** Advisory write-burst detection for agent/session. */
+  anomaly_write_burst_limit: number;
+  anomaly_write_burst_window_ms: number;
+  /** When true, probe count(*) for mutation blast-radius estimates. */
+  blast_radius_probe: boolean;
 }
 
 export const DEFAULT_POLICY: ForgeGuardPolicy = {
@@ -34,9 +47,20 @@ export const DEFAULT_POLICY: ForgeGuardPolicy = {
     "comment",
     "with",
   ],
+  approval_threshold: "medium",
+  anomaly_write_burst_limit: 20,
+  anomaly_write_burst_window_ms: 60_000,
+  blast_radius_probe: false,
 };
 
 export const MASKED_PLACEHOLDER = "[FORGEGUARD:MASKED]";
+
+function asSeverity(v: unknown): Severity {
+  if (typeof v === "string" && (SEVERITY_ORDER as string[]).includes(v)) {
+    return v as Severity;
+  }
+  return DEFAULT_POLICY.approval_threshold;
+}
 
 function sanitize(raw: unknown): ForgeGuardPolicy {
   const obj = (typeof raw === "object" && raw !== null ? raw : {}) as Record<
@@ -45,19 +69,44 @@ function sanitize(raw: unknown): ForgeGuardPolicy {
   >;
   const strings = (v: unknown): string[] =>
     Array.isArray(v)
-      ? v.filter((s): s is string => typeof s === "string").map((s) => s.trim().toLowerCase()).filter(Boolean)
+      ? v
+          .filter((s): s is string => typeof s === "string")
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean)
       : [];
+  const positiveInt = (v: unknown, fallback: number): number =>
+    typeof v === "number" && v > 0 ? Math.floor(v) : fallback;
+
+  const blastEnv = process.env.FORGEGUARD_BLAST_RADIUS?.trim().toLowerCase();
+  const blastFromEnv =
+    blastEnv === "1" || blastEnv === "true" || blastEnv === "yes"
+      ? true
+      : blastEnv === "0" || blastEnv === "false" || blastEnv === "no"
+        ? false
+        : null;
+
   return {
     denied_tables: strings(obj.denied_tables),
     masked_columns: strings(obj.masked_columns),
-    max_rows:
-      typeof obj.max_rows === "number" && obj.max_rows > 0
-        ? Math.floor(obj.max_rows)
-        : DEFAULT_POLICY.max_rows,
+    max_rows: positiveInt(obj.max_rows, DEFAULT_POLICY.max_rows),
     allowed_statements:
       strings(obj.allowed_statements).length > 0
         ? strings(obj.allowed_statements)
         : DEFAULT_POLICY.allowed_statements,
+    approval_threshold: asSeverity(obj.approval_threshold),
+    anomaly_write_burst_limit: positiveInt(
+      obj.anomaly_write_burst_limit,
+      DEFAULT_POLICY.anomaly_write_burst_limit,
+    ),
+    anomaly_write_burst_window_ms: positiveInt(
+      obj.anomaly_write_burst_window_ms,
+      DEFAULT_POLICY.anomaly_write_burst_window_ms,
+    ),
+    blast_radius_probe:
+      blastFromEnv ??
+      (typeof obj.blast_radius_probe === "boolean"
+        ? obj.blast_radius_probe
+        : DEFAULT_POLICY.blast_radius_probe),
   };
 }
 
@@ -72,7 +121,7 @@ export function loadPolicy(): ForgeGuardPolicy {
   try {
     cached = sanitize(JSON.parse(readFileSync(path, "utf8")));
   } catch {
-    cached = { ...DEFAULT_POLICY };
+    cached = sanitize({});
   }
   return cached;
 }
@@ -84,8 +133,8 @@ export function setPolicyForTests(policy: ForgeGuardPolicy | null): void {
 
 // ─── Enforcement helpers ──────────────────────────────────────────────────────
 
-/** Best-effort extraction of table names referenced by a statement. */
-export function referencedTables(sql: string): string[] {
+/** Regex fallback when AST parse fails. */
+function referencedTablesRegex(sql: string): string[] {
   const tables = new Set<string>();
   const re =
     /\b(?:from|join|into|update|table(?:\s+if\s+(?:not\s+)?exists)?|truncate)\s+(?:only\s+)?"?([a-zA-Z_][\w$]*)"?/gi;
@@ -99,20 +148,32 @@ export function referencedTables(sql: string): string[] {
   return [...tables];
 }
 
+/** Best-effort extraction of table names (AST first, regex fallback). */
+export function referencedTables(sql: string): string[] {
+  return astReferencedTables(sql) ?? referencedTablesRegex(sql);
+}
+
 export interface PolicyViolation {
   rule: "denied_table" | "statement_not_allowed";
   detail: string;
+}
+
+function firstStatementClass(sql: string): string {
+  const fromAst = astStatementClass(sql);
+  if (fromAst) return fromAst;
+  return sql.trim().split(/[\s(;]+/, 1)[0]?.toLowerCase() ?? "";
 }
 
 export function checkPolicy(
   sql: string,
   policy: ForgeGuardPolicy = loadPolicy(),
 ): PolicyViolation | null {
-  const firstWord = sql.trim().split(/[\s(;]+/, 1)[0]?.toLowerCase() ?? "";
-  if (firstWord && !policy.allowed_statements.includes(firstWord)) {
+  // Prefer AST class (WITH … DELETE → "delete") so allowlists match intent.
+  const stmtClass = firstStatementClass(sql);
+  if (stmtClass && !policy.allowed_statements.includes(stmtClass)) {
     return {
       rule: "statement_not_allowed",
-      detail: `Statement class "${firstWord.toUpperCase()}" is not allowed by policy.`,
+      detail: `Statement class "${stmtClass.toUpperCase()}" is not allowed by policy.`,
     };
   }
   for (const table of referencedTables(sql)) {

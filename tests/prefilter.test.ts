@@ -95,3 +95,16 @@ test("CREATE TABLE with no destructive patterns is safe benign", () => {
   assert.equal(v.category, "benign");
   assert.equal(v.requires_approval, false);
 });
+
+test("CTE-wrapped unconditional DELETE is critical via AST", () => {
+  const v = pf("WITH t AS (SELECT 1) DELETE FROM orders;");
+  assert.equal(v.severity, "critical");
+  assert.equal(v.sql_source, "ast");
+  assert.equal(v.requires_approval, true);
+});
+
+test("comment-prefixed DELETE is critical via AST", () => {
+  const v = pf("/* skip */ DELETE FROM orders;");
+  assert.equal(v.severity, "critical");
+  assert.equal(v.sql_source, "ast");
+});

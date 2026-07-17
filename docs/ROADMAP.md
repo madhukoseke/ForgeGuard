@@ -8,7 +8,7 @@ Product direction for the capability leap beyond 0.3: **[V2.md](./V2.md)**.
 - [x] **B — Fail-closed production** — strict defaults; no silent memory fallback when durable store was requested
 - [x] **C — Operator identity (C1)** — server-verified `reviewed_by`; named tokens via `FORGEGUARD_OPERATORS` (roles / SSO later)
 - [x] **D — Operator dashboard** — search, bulk actions, export, pending webhook, faster poll when pending
-- [ ] **E — Stronger guard core** — AST-backed SQL detection; configurable thresholds
+- [x] **E — Stronger guard core** — AST-backed SQL detection; configurable thresholds; advisory anomaly; optional blast-radius probe
 - [ ] **F — Library API + schema** — npm `exports` map (former “v1” item); unified migrations
 
 Suggested tags: `0.4` (A) → `0.5` (B+C) → `0.6` (D) → `0.7` (E) → `1.0` (F). Details and success criteria: [V2.md](./V2.md).

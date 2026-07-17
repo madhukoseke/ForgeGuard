@@ -213,11 +213,13 @@ Copy [`forgeguard.config.example.json`](./forgeguard.config.example.json) to `fo
   "denied_tables": ["api_keys", "secrets"],
   "masked_columns": ["password_hash", "users.email"],
   "max_rows": 200,
-  "allowed_statements": ["select", "with", "insert", "update", "create", "alter"]
+  "allowed_statements": ["select", "with", "insert", "update", "create", "alter"],
+  "approval_threshold": "medium",
+  "blast_radius_probe": false
 }
 ```
 
-Violations are rejected before the backend is touched and logged to the audit trail.
+Violations are rejected before the backend is touched and logged to the audit trail. Destructive SQL detection uses an AST path (`pgsql-ast-parser`) with regex fallback — see [THREAT_MODEL.md](./docs/THREAT_MODEL.md).
 
 ---
 
@@ -329,7 +331,8 @@ Copy `.env.example` → `.env.local`. All variables are optional for the local d
 | `FORGEGUARD_BACKEND` | Data backend: `memory` (default), `postgres`, `insforge` |
 | `DATABASE_URL` / `FORGEGUARD_DATABASE_URL` | Postgres connection string |
 | `FORGEGUARD_STORE` | Audit store: `memory` (default), `postgres`, `insforge` |
-| `FORGEGUARD_CONFIG` | Path to the read-side policy file |
+| `FORGEGUARD_CONFIG` | Path to the read-side policy file (`approval_threshold`, anomaly burst, etc.) |
+| `FORGEGUARD_BLAST_RADIUS` | `1` to enable `count(*)` blast-radius probe on execute |
 | `FORGEGUARD_INJECTION_LLM` | `1` to enable the LLM injection scan |
 | `FORGEGUARD_AGENT` | Agent label on MCP audit rows |
 | `FORGEGUARD_EXECUTOR` | `simulated` (default), `insforge`, or `migrations` |
@@ -454,7 +457,8 @@ lib/
   guard.ts                  Backend-change ops (db.migration, function/storage/auth)
   injection.ts              Bidirectional prompt-injection scanner
   policy.ts                 Read-side safeguards (forgeguard.config.json)
-  prefilter.ts              Layer 1 destructive-SQL rules
+  sql-ast.ts                AST-backed Postgres SQL analysis
+  prefilter.ts              Layer 1 destructive-SQL rules (AST + regex)
   classifier.ts             Layer 2 LLM / heuristic
   store.ts / store-postgres.ts  Audit persistence (memory · postgres · insforge)
   executor.ts               InsForge apply / rollback (per op type)

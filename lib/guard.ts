@@ -8,7 +8,9 @@ import { scanInbound } from "./injection";
 import { applyOp } from "./insforge-executor";
 import { getExecutorMode } from "./insforge-client";
 import { resolvePreviewUrl, shouldAttachPreview } from "./limrun";
+import { noteWriteAndDetect } from "./anomaly";
 import { emitPendingAlert } from "./pending-notify";
+import { loadPolicy } from "./policy";
 import { prefilter } from "./prefilter";
 import { getStore } from "./store";
 import {
@@ -31,12 +33,23 @@ function mergeVerdicts(op: ProposedOp, llm: Verdict): Verdict {
   const deterministicBlastKnown = deterministic.blast_radius !== "unknown";
   const llmBlastIsWeak =
     llm.blast_radius === "unknown" || /^\d+$/.test(llm.blast_radius.trim());
+  const policy = loadPolicy();
+  const anomaly = noteWriteAndDetect(op.agent, op.session_id, {
+    write_burst_limit: policy.anomaly_write_burst_limit,
+    write_burst_window_ms: policy.anomaly_write_burst_window_ms,
+  });
+  const rationale = anomaly
+    ? `${llm.rationale} [anomaly] ${anomaly.detail}`
+    : llm.rationale;
 
   return {
     severity,
     category,
-    requires_approval: computeRequiresApproval(severity),
-    rationale: llm.rationale,
+    requires_approval: computeRequiresApproval(
+      severity,
+      policy.approval_threshold,
+    ),
+    rationale,
     safer_alternative: llm.safer_alternative ?? deterministic.safer_alternative,
     blast_radius:
       deterministicBlastKnown && llmBlastIsWeak

@@ -8,6 +8,8 @@
 import { randomUUID } from "crypto";
 import { getDataBackend } from "./backends";
 import type { DataBackend } from "./backends";
+import { noteWriteAndDetect } from "./anomaly";
+import { probeBlastRadius } from "./blast-radius";
 import { classify, heuristicVerdict } from "./classifier";
 import {
   llmScanText,
@@ -238,6 +240,7 @@ function mergeExecuteVerdict(
   input: DataRequestInput,
   llm: Verdict,
   findings: InjectionFinding[],
+  blastOverride?: string | null,
 ): Verdict {
   const op = { operation_type: "data.execute" as const, statement: input.sql };
   const pf = prefilter(op);
@@ -254,19 +257,33 @@ function mergeExecuteVerdict(
       : severityRank(pf.severity) >= severityRank(llm.severity)
         ? pf.category
         : llm.category;
+  const policy = loadPolicy();
+  const anomaly = noteWriteAndDetect(input.agent, input.session_id, {
+    write_burst_limit: policy.anomaly_write_burst_limit,
+    write_burst_window_ms: policy.anomaly_write_burst_window_ms,
+  });
+  let rationale =
+    findings.length > 0
+      ? `${llm.rationale} Inbound injection patterns detected: ${findings.map((f) => f.rule).join(", ")}.`
+      : llm.rationale;
+  if (anomaly) rationale = `${rationale} [anomaly] ${anomaly.detail}`;
+
+  const blast_radius =
+    blastOverride ||
+    (deterministic.blast_radius !== "unknown"
+      ? deterministic.blast_radius
+      : llm.blast_radius);
+
   return {
     severity,
     category,
-    requires_approval: computeRequiresApproval(severity),
-    rationale:
-      findings.length > 0
-        ? `${llm.rationale} Inbound injection patterns detected: ${findings.map((f) => f.rule).join(", ")}.`
-        : llm.rationale,
+    requires_approval: computeRequiresApproval(
+      severity,
+      policy.approval_threshold,
+    ),
+    rationale,
     safer_alternative: llm.safer_alternative ?? deterministic.safer_alternative,
-    blast_radius:
-      deterministic.blast_radius !== "unknown"
-        ? deterministic.blast_radius
-        : llm.blast_radius,
+    blast_radius,
   };
 }
 
@@ -304,7 +321,17 @@ export async function guardDataExecute(
     agent: input.agent,
     session_id: input.session_id,
   });
-  const verdict = mergeExecuteVerdict(input, llm, findings);
+  const blast = await probeBlastRadius(
+    input.sql,
+    backend,
+    policy.blast_radius_probe,
+  );
+  const verdict = mergeExecuteVerdict(
+    input,
+    llm,
+    findings,
+    blast.estimate,
+  );
 
   action.severity = verdict.severity;
   action.category = verdict.category;

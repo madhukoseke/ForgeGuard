@@ -2,7 +2,12 @@
 // Instant, free, reliable. Runs BEFORE the LLM. The LLM (Layer 2) only adds
 // nuance + the safer alternative. These rules must be correct for the demo
 // inputs and the obvious production killers; they intentionally stay simple.
+//
+// SQL destructive patterns prefer AST analysis (pgsql-ast-parser); regex remains
+// as fallback when parse fails, and for non-SQL ops (storage/auth config).
 
+import { loadPolicy } from "./policy";
+import { analyzeSql } from "./sql-ast";
 import {
   Category,
   OpContext,
@@ -25,20 +30,27 @@ export interface PrefilterResult {
   matched: PrefilterHit[];
   // Highest-priority hit, or null when nothing matched (treated as safe/benign).
   top: PrefilterHit | null;
+  /** How SQL structural rules were evaluated. */
+  sql_source: "ast" | "regex" | "n/a";
 }
 
 interface Rule {
   name: string;
-  test: (sql: string, ctx?: OpContext) => boolean;
+  test: (sql: string, ctx: RuleContext) => boolean;
   severity: Severity;
   category: Category;
   rationale: string;
 }
 
+interface RuleContext {
+  opCtx?: OpContext;
+  ast: ReturnType<typeof analyzeSql>;
+}
+
 const has = (sql: string, re: RegExp) => re.test(sql);
 
 // Detects DELETE/UPDATE statements that lack a WHERE clause (unconditional).
-function unconditionalWrite(sql: string): boolean {
+function unconditionalWriteRegex(sql: string): boolean {
   const statements = sql
     .split(";")
     .map((s) => s.trim())
@@ -54,21 +66,26 @@ function unconditionalWrite(sql: string): boolean {
 const RULES: Rule[] = [
   {
     name: "DROP TABLE",
-    test: (s) => has(s, /\bdrop\s+table\b/i),
+    test: (s, ctx) =>
+      ctx.ast.parsed ? ctx.ast.dropTable : has(s, /\bdrop\s+table\b/i),
     severity: "critical",
     category: "destructive",
     rationale: "Dropping a table permanently destroys the table and all its rows.",
   },
   {
     name: "TRUNCATE",
-    test: (s) => has(s, /\btruncate\b/i),
+    test: (s, ctx) =>
+      ctx.ast.parsed ? ctx.ast.truncate : has(s, /\btruncate\b/i),
     severity: "critical",
     category: "data_loss",
     rationale: "TRUNCATE irreversibly removes every row in the target table.",
   },
   {
     name: "DELETE/UPDATE without WHERE",
-    test: (s) => unconditionalWrite(s),
+    test: (s, ctx) =>
+      ctx.ast.parsed
+        ? ctx.ast.unconditionalWrite
+        : unconditionalWriteRegex(s),
     severity: "critical",
     category: "data_loss",
     rationale:
@@ -76,7 +93,8 @@ const RULES: Rule[] = [
   },
   {
     name: "DROP COLUMN",
-    test: (s) => has(s, /\bdrop\s+column\b/i),
+    test: (s, ctx) =>
+      ctx.ast.parsed ? ctx.ast.dropColumn : has(s, /\bdrop\s+column\b/i),
     severity: "high",
     category: "data_loss",
     rationale:
@@ -84,7 +102,10 @@ const RULES: Rule[] = [
   },
   {
     name: "ALTER COLUMN TYPE (narrowing)",
-    test: (s) => has(s, /\balter\s+column\b[\s\S]*\btype\b/i),
+    test: (s, ctx) =>
+      ctx.ast.parsed
+        ? ctx.ast.alterColumnType
+        : has(s, /\balter\s+column\b[\s\S]*\btype\b/i),
     severity: "high",
     category: "data_loss",
     rationale:
@@ -92,6 +113,7 @@ const RULES: Rule[] = [
   },
   {
     name: "DISABLE RLS / DROP POLICY",
+    // Parser does not cover these Postgres constructs yet — regex only.
     test: (s) =>
       has(s, /\bdisable\s+row\s+level\s+security\b/i) ||
       has(s, /\bdrop\s+policy\b/i),
@@ -123,9 +145,11 @@ const RULES: Rule[] = [
   },
   {
     name: "ADD COLUMN NOT NULL (no default)",
-    test: (s) =>
-      has(s, /\badd\s+column\b[\s\S]*\bnot\s+null\b/i) &&
-      !has(s, /\bdefault\b/i),
+    test: (s, ctx) =>
+      ctx.ast.parsed
+        ? ctx.ast.addNotNullNoDefault
+        : has(s, /\badd\s+column\b[\s\S]*\bnot\s+null\b/i) &&
+          !has(s, /\bdefault\b/i),
     severity: "medium",
     category: "migration_risk",
     rationale:
@@ -133,9 +157,11 @@ const RULES: Rule[] = [
   },
   {
     name: "CREATE INDEX (non-CONCURRENTLY)",
-    test: (s) =>
-      has(s, /\bcreate\s+(unique\s+)?index\b/i) &&
-      !has(s, /\bconcurrently\b/i),
+    test: (s, ctx) =>
+      ctx.ast.parsed
+        ? ctx.ast.createIndexNonConcurrent
+        : has(s, /\bcreate\s+(unique\s+)?index\b/i) &&
+          !has(s, /\bconcurrently\b/i),
     severity: "low",
     category: "migration_risk",
     rationale:
@@ -145,11 +171,13 @@ const RULES: Rule[] = [
 
 export function prefilter(op: ProposedOp): PrefilterResult {
   const sql = op.statement ?? "";
+  const ast = analyzeSql(sql);
   const matched: PrefilterHit[] = [];
+  const ctx: RuleContext = { opCtx: op.context, ast };
 
   for (const rule of RULES) {
     try {
-      if (rule.test(sql, op.context)) {
+      if (rule.test(sql, ctx)) {
         matched.push({
           severity: rule.severity,
           category: rule.category,
@@ -158,19 +186,25 @@ export function prefilter(op: ProposedOp): PrefilterResult {
         });
       }
     } catch {
-      // A misbehaving regex must never break the chokepoint.
+      // A misbehaving rule must never break the chokepoint.
     }
   }
 
   const top = matched[0] ?? null;
   const severity: Severity = top?.severity ?? "safe";
   const category: Category = top?.category ?? "benign";
+  const threshold = loadPolicy().approval_threshold;
 
   return {
     severity,
     category,
-    requires_approval: computeRequiresApproval(severity),
+    requires_approval: computeRequiresApproval(severity, threshold),
     matched,
     top,
+    sql_source: !sql.trim()
+      ? "n/a"
+      : ast.parsed
+        ? "ast"
+        : "regex",
   };
 }

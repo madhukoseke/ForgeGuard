@@ -76,5 +76,24 @@ test("loadPolicy falls back to defaults when no config exists", () => {
   const p = loadPolicy();
   assert.equal(p.max_rows, DEFAULT_POLICY.max_rows);
   assert.deepEqual(p.denied_tables, []);
+  assert.equal(p.approval_threshold, "medium");
+  assert.equal(p.blast_radius_probe, false);
   setPolicyForTests(null);
+});
+
+test("referencedTables prefers AST for quoted identifiers", () => {
+  assert.deepEqual(
+    referencedTables('SELECT * FROM "api_keys"').sort(),
+    ["api_keys"],
+  );
+});
+
+test("checkPolicy uses AST statement class for CTE deletes", () => {
+  const p = policy({ allowed_statements: ["select", "with"] });
+  const violation = checkPolicy(
+    "WITH t AS (SELECT 1) DELETE FROM users;",
+    p,
+  );
+  assert.equal(violation?.rule, "statement_not_allowed");
+  assert.match(violation!.detail, /DELETE/);
 });

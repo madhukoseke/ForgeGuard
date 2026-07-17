@@ -3,6 +3,7 @@
 // If no gateway is configured OR the call fails, it gracefully degrades to a
 // deterministic heuristic built on Layer 1 — so the demo NEVER hard-fails.
 
+import { loadPolicy } from "./policy";
 import { prefilter } from "./prefilter";
 import {
   Category,
@@ -70,13 +71,14 @@ function coerceVerdict(raw: any): Verdict | null {
   const category: Category = VALID_CATEGORY.includes(raw.category)
     ? raw.category
     : "migration_risk";
+  const threshold = loadPolicy().approval_threshold;
   return {
     severity,
     category,
     requires_approval:
       typeof raw.requires_approval === "boolean"
         ? raw.requires_approval
-        : computeRequiresApproval(severity),
+        : computeRequiresApproval(severity, threshold),
     rationale:
       typeof raw.rationale === "string" && raw.rationale.trim()
         ? raw.rationale.trim()
